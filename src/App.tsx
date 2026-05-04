@@ -148,7 +148,6 @@ export default function App() {
                 <OccupancyBar
                   countries={gameState.countries}
                   players={gameState.players}
-                  totalCountries={177}
                 />
               </div>
             )}
