@@ -145,10 +145,10 @@ export default function App() {
                   players={gameState.players}
                   onCountryClick={(id, name) => setSelectedCountry({ id, name })}
                 />
-                <OccupancyOverlay                        {/* ← 이 줄부터 */}
+                <OccupancyOverlay                       
                   countries={gameState.countries}
                   players={gameState.players}
-                />                                        {/* ← 이 줄까지 추가 */}
+                />                                        
               </div>
             )}
             {activeTab === 'admin' && currentUser?.role === 'admin' && (
