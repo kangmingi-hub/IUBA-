@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { TEAM_ALIASES } from '../constants';
 
 const STORAGE_KEY = 'kingdom_conquerors_save';
-const AUTH_KEY = 'kingdom_conquerors_auth';f
+const AUTH_KEY = 'kingdom_conquerors_auth';
 
 export function useGameState() {
   const [gameState, setGameState] = useState<GameState>(() => {
