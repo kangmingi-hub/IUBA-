@@ -498,19 +498,10 @@ export function useGameState() {
   };
 
 const handleColorChange = async (playerId: string, color: string) => {
-  const { data } = await supabase
-    .from('app_settings')
-    .select('value')
-    .eq('key', 'player_colors')
-    .single();
-  
-  const currentColors = data?.value ? JSON.parse(data.value) : {};
-  const newColors = { ...currentColors, [playerId]: color };
-  
-  await supabase.from('app_settings').upsert({ 
-    key: 'player_colors', 
-    value: JSON.stringify(newColors) 
-  });
+  await supabase
+    .from('users')
+    .update({ color })
+    .eq('id', playerId);
 
   setGameState(prev => ({
     ...prev,
