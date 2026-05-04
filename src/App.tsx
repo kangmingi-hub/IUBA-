@@ -22,6 +22,7 @@ import { CountryState } from './types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import BackgroundMusic from './components/BackgroundMusic';
+import OccupancyOverlay from './components/OccupancyOverlay';
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 
@@ -137,13 +138,17 @@ export default function App() {
 
         <section className="lg:col-span-7 min-h-[600px] flex flex-col">
           <AnimatePresence mode="wait">
-            {activeTab === 'map' && (
-              <div className="flex-1" style={{ touchAction: 'none' }}>
+           {activeTab === 'map' && (
+              <div className="flex-1 relative" style={{ touchAction: 'none' }}>
                 <WorldMap
                   countries={gameState.countries}
                   players={gameState.players}
                   onCountryClick={(id, name) => setSelectedCountry({ id, name })}
                 />
+                <OccupancyOverlay                        {/* ← 이 줄부터 */}
+                  countries={gameState.countries}
+                  players={gameState.players}
+                />                                        {/* ← 이 줄까지 추가 */}
               </div>
             )}
             {activeTab === 'admin' && currentUser?.role === 'admin' && (
