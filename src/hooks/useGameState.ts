@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { TEAM_ALIASES } from '../constants';
 
 const STORAGE_KEY = 'kingdom_conquerors_save';
-const AUTH_KEY = 'kingdom_conquerors_auth';
+const AUTH_KEY = 'kingdom_conquerors_auth';f
 
 export function useGameState() {
   const [gameState, setGameState] = useState<GameState>(() => {
@@ -498,7 +498,20 @@ export function useGameState() {
   };
 
 const handleColorChange = async (playerId: string, color: string) => {
-  await supabase.from('users').update({ color }).eq('id', playerId);
+  const { data } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'player_colors')
+    .single();
+  
+  const currentColors = data?.value ? JSON.parse(data.value) : {};
+  const newColors = { ...currentColors, [playerId]: color };
+  
+  await supabase.from('app_settings').upsert({ 
+    key: 'player_colors', 
+    value: JSON.stringify(newColors) 
+  });
+
   setGameState(prev => ({
     ...prev,
     players: prev.players.map(p => p.id === playerId ? { ...p, color } : p)
