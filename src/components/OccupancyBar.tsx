@@ -32,7 +32,7 @@ const FALLBACK_COLORS = [
 export default function OccupancyBar({ countries, players }: OccupancyBarProps) {
   const { total, empty, clubs } = useMemo(() => {
     const all = Object.values(countries);
-    const total = totalCountries;  
+    const total = all.length; 
     const empty = all.filter(c => !c.ownerId).length;
 
     const map: Record<string, number> = {};
