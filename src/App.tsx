@@ -22,7 +22,7 @@ import { CountryState } from './types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import BackgroundMusic from './components/BackgroundMusic';
-import OccupancyOverlay from './components/OccupancyOverlay';
+import OccupancyBar from './components/OccupancyBar';
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 
