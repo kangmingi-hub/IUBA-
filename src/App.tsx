@@ -138,17 +138,17 @@ export default function App() {
 
         <section className="lg:col-span-7 min-h-[600px] flex flex-col">
           <AnimatePresence mode="wait">
-           {activeTab === 'map' && (
-              <div className="flex-1 relative" style={{ touchAction: 'none' }}>
+            {activeTab === 'map' && (
+              <div className="flex-1 flex flex-col gap-3" style={{ touchAction: 'none' }}>
                 <WorldMap
                   countries={gameState.countries}
                   players={gameState.players}
                   onCountryClick={(id, name) => setSelectedCountry({ id, name })}
                 />
-                <OccupancyOverlay                       
+                <OccupancyBar
                   countries={gameState.countries}
                   players={gameState.players}
-                />                                        
+                />
               </div>
             )}
             {activeTab === 'admin' && currentUser?.role === 'admin' && (
