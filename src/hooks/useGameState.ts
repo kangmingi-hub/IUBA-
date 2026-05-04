@@ -498,10 +498,13 @@ export function useGameState() {
   };
 
 const handleColorChange = async (playerId: string, color: string) => {
+  const player = gameState.players.find(p => p.id === playerId);
+  if (!player) return;
+
   await supabase
     .from('users')
     .update({ color })
-    .eq('id', playerId);
+    .eq('username', player.name);
 
   setGameState(prev => ({
     ...prev,
