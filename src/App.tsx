@@ -42,6 +42,8 @@ export default function App() {
 
   const occupiedCountries = Object.values(gameState.countries as Record<string, CountryState>).filter(c => c.ownerId);
 
+  const [totalMapCountries, setTotalMapCountries] = useState(0);
+
   return (
     <div className="min-h-screen text-white font-sans p-4 md:p-8" style={{ position: 'relative' }}>
       <HologramBackground /> 
@@ -144,10 +146,12 @@ export default function App() {
                   countries={gameState.countries}
                   players={gameState.players}
                   onCountryClick={(id, name) => setSelectedCountry({ id, name })}
+                  onFeaturesLoaded={setTotalMapCountries}
                 />
                 <OccupancyBar
                   countries={gameState.countries}
                   players={gameState.players}
+                  totalCountries={totalMapCountries}
                 />
               </div>
             )}
