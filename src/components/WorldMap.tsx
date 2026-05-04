@@ -14,6 +14,7 @@ interface WorldMapProps {
   countries: Record<string, CountryState>;
   players: Player[];
   onCountryClick: (countryId: string, countryName: string) => void;
+  onFeaturesLoaded?: (count: number) => void; 
 }
 
 type ViewMode = '3d' | '2d';
@@ -114,6 +115,7 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
     const path = d3.geoPath().projection(projection);
     const features = topojson.feature(topology, topology.objects.countries) as any;
     const filteredFeatures = features.features.filter((f: any) => f.id !== '010' && f.properties.name !== 'Antarctica');
+    onFeaturesLoaded?.(filteredFeatures.length);
 
     const gMain = svg.append('g').attr('class', 'main-group');
 
