@@ -112,6 +112,7 @@ export const CLUB_IMAGES: Record<string, string> = {
   'BPM': '/clubs/BPM.png',
   'EBS': '/clubs/EBS.png',
   'EVERGREEN+BPM+MARE': '/clubs/EvergreenBpmMare.png',
+  'Psallo': '/clubs/Psallo.png',
 };
 
 export const BUILDING_IMAGES: Record<number, string> = {
