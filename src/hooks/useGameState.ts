@@ -185,10 +185,9 @@ useEffect(() => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, (payload: any) => {
         if (payload.new?.key === 'start_date') setStartDate(payload.new.value);
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'country_purchases' }, () => { fetchClubPoints(startDate); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'building_purchases' }, () => { fetchClubPoints(startDate); })
-      // ✅ 추가: records 변경도 감지 → 어드민 점수 입력 실시간 반영
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'records' }, () => { fetchClubPoints(startDate); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'country_purchases' }, () => { fetchClubPoints(); })
+.on('postgres_changes', { event: '*', schema: 'public', table: 'building_purchases' }, () => { fetchClubPoints(); })
+.on('postgres_changes', { event: '*', schema: 'public', table: 'records' }, () => { fetchClubPoints(); })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
