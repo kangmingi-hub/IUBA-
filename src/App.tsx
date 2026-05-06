@@ -60,8 +60,12 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-[#1E293B]">
-              📍 IUBA경상대 <span className="text-blue-600 font-normal">센터 땅따먹기</span>
-            </h1>
+  📍 IUBA경상대 <span className="font-normal" style={{
+    color: '#3b82f6',
+    textShadow: '0 0 8px #3b82f6, 0 0 20px #3b82f6, 0 0 40px #60a5fa, 0 0 80px #93c5fd',
+    animation: 'ledPulse 1.5s ease-in-out infinite alternate',
+  }}>센터 땅따먹기</span>
+</h1>
             <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-widest">하나님 나라의 확장과 선교 미션</p>
           </div>
         </div>
@@ -210,6 +214,11 @@ export default function App() {
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+        
+        @keyframes ledPulse {
+          0% { text-shadow: 0 0 8px #3b82f6, 0 0 20px #3b82f6, 0 0 40px #60a5fa; }
+          100% { text-shadow: 0 0 16px #3b82f6, 0 0 40px #3b82f6, 0 0 80px #60a5fa, 0 0 120px #93c5fd; }
+        }
       `}</style>
     </div>
   );
