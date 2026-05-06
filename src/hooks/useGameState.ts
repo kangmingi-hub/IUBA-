@@ -164,11 +164,15 @@ export function useGameState() {
     }
   };
 
-  useEffect(() => {
-    if (!isDateLoaded) return;
-    fetchClubPoints(startDate);
+useEffect(() => {
+  if (!isDateLoaded) return;
+  
+  const init = async () => {
+    await fetchUsers();
+    await fetchClubPoints(startDate);
     fetchOccupations();
-    fetchUsers();
+  };
+  init();
 
     const channel = supabase
       .channel('realtime_sync')
