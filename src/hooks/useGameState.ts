@@ -107,12 +107,14 @@ export function useGameState() {
   }
 };
 
-  const fetchClubPoints = async (date?: string) => {
-    setIsSyncing(true);
-    const targetDate = date || startDate;
-    try {
-      const { data, error } = await supabase
-        .rpc('get_team_points_from_date', { start_date: targetDate });
+const fetchClubPoints = async (date?: string) => {
+  setIsSyncing(true);
+  const targetDate = date || startDate;
+  try {
+    const { data: usersData } = await supabase.from('users').select('username, color');
+
+    const { data, error } = await supabase
+      .rpc('get_team_points_from_date', { start_date: targetDate });
 
       if (error) throw error;
       if (data) {
@@ -148,7 +150,8 @@ export function useGameState() {
             return {
               id: `club-${club.club_name.replace(/\s+/g, '-').toLowerCase()}`,
               name: club.club_name,
-              color: existing?.color || TEAM_COLORS[idx % TEAM_COLORS.length],
+              const savedColor = usersData?.find((u: any) => u.username === club.club_name)?.color;
+color: savedColor || existing?.color || TEAM_COLORS[idx % TEAM_COLORS.length],
               characterUrl: `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${club.club_name}`,
               gold: club.remaining_evangelism_points,
               buildingPower: club.remaining_speech_points
