@@ -100,7 +100,7 @@ export function useGameState() {
       ...prev,
       users: data,
       players: prev.players.map(p => {
-        const user = data.find((u: any) => u.id === p.id);
+        const user = data.find((u: any) => u.username === p.name);
         return user?.color ? { ...p, color: user.color } : p;
       })
     }));
