@@ -114,6 +114,7 @@ export const CLUB_IMAGES: Record<string, string> = {
   'EVERGREEN+BPM+MARE': '/clubs/EvergreenBpmMare.png',
   'Psallo': '/clubs/Psallo.png',
   'A to Z+YITC': '/clubs/AtoZYITC.png',
+  'EBS+The First': '/clubs/EBSTheFirst.png', // ✅ 추가 
 };
 
 export const BUILDING_IMAGES: Record<number, string> = {
@@ -135,4 +136,6 @@ export const TEAM_ALIASES: Record<string, string> = {
   'Evergreen': 'EVERGREEN+BPM+MARE',
   'A to Z': 'A to Z+YITC',   // ✅ 추가
   'YITC': 'A to Z+YITC',     // ✅ 추가
+  'EBS': 'EBS+The First',       // ✅ 추가
+  'The First': 'EBS+The First', // ✅ 추가
 };
