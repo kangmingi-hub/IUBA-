@@ -147,10 +147,11 @@ const fetchClubPoints = async (date?: string) => {
             if (existing) {
               return { ...existing, gold: club.remaining_evangelism_points, buildingPower: club.remaining_speech_points } as Player;
             }
+
+            const savedColor = usersData?.find((u: any) => u.username === club.club_name)?.color;
             return {
               id: `club-${club.club_name.replace(/\s+/g, '-').toLowerCase()}`,
               name: club.club_name,
-              const savedColor = usersData?.find((u: any) => u.username === club.club_name)?.color;
 color: savedColor || existing?.color || TEAM_COLORS[idx % TEAM_COLORS.length],
               characterUrl: `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${club.club_name}`,
               gold: club.remaining_evangelism_points,
