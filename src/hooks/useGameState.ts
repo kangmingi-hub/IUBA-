@@ -121,6 +121,7 @@ const fetchClubPoints = async (date?: string) => {
         const MERGE_GROUPS = [
             { newName: 'EVERGREEN+BPM+MARE', teams: ['Evergreen', 'BPM', 'MARE'] },
             { newName: 'A to Z+YITC', teams: ['A to Z', 'YITC'] },
+            { newName: 'EBS+The First', teams: ['EBS', 'The First'] },
           ];
         const mergedTeamNames = new Set(MERGE_GROUPS.flatMap(g => g.teams));
         const mergedData: any[] = [];
@@ -151,6 +152,7 @@ const fetchClubPoints = async (date?: string) => {
             const MERGE_MAP: Record<string, string> = {
   'EVERGREEN+BPM+MARE': 'Evergreen',
   'A TO Z+YITC': 'A to Z',
+              'EBS+The First': 'EBS',
 };
 const lookupName = MERGE_MAP[club.club_name] || club.club_name;
 const savedColor = usersData?.find((u: any) => u.username === lookupName)?.color;
@@ -517,6 +519,7 @@ const handleColorChange = async (playerId: string, color: string) => {
   const MERGE_MAP: Record<string, string> = {
     'EVERGREEN+BPM+MARE': 'Evergreen',
     'A TO Z+YITC': 'A to Z',
+    'EBS+The First': 'EBS',
   };
   const lookupName = MERGE_MAP[player.name] || player.name;
 
