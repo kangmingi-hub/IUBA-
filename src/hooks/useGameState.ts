@@ -514,10 +514,16 @@ const handleColorChange = async (playerId: string, color: string) => {
   const player = gameState.players.find(p => p.id === playerId);
   if (!player) return;
 
+  const MERGE_MAP: Record<string, string> = {
+    'EVERGREEN+BPM+MARE': 'Evergreen',
+    'A TO Z+YITC': 'A to Z',
+  };
+  const lookupName = MERGE_MAP[player.name] || player.name;
+
   await supabase
     .from('users')
     .update({ color })
-    .eq('username', player.name);
+    .eq('username', lookupName);
 
   setGameState(prev => ({
     ...prev,
