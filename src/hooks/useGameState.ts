@@ -148,7 +148,12 @@ const fetchClubPoints = async (date?: string) => {
               return { ...existing, gold: club.remaining_evangelism_points, buildingPower: club.remaining_speech_points } as Player;
             }
 
-            const savedColor = usersData?.find((u: any) => u.username === club.club_name)?.color;
+            const MERGE_MAP: Record<string, string> = {
+  'EVERGREEN+BPM+MARE': 'Evergreen',
+  'A TO Z+YITC': 'A to Z',
+};
+const lookupName = MERGE_MAP[club.club_name] || club.club_name;
+const savedColor = usersData?.find((u: any) => u.username === lookupName)?.color;
             return {
               id: `club-${club.club_name.replace(/\s+/g, '-').toLowerCase()}`,
               name: club.club_name,
