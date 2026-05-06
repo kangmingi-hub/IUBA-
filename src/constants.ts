@@ -132,4 +132,6 @@ export const TEAM_ALIASES: Record<string, string> = {
   'BPM': 'EVERGREEN+BPM+MARE',
   'MARE': 'EVERGREEN+BPM+MARE',
   'Evergreen': 'EVERGREEN+BPM+MARE',
+  'A to Z': 'A to Z+YITC',   // ✅ 추가
+  'YITC': 'A to Z+YITC',     // ✅ 추가
 };
