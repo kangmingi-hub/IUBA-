@@ -61,7 +61,7 @@ export default function App() {
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-[#1E293B]">
   📍 IUBA경상대 <span className="font-normal" style={{
-    color: '#3b82f6',
+    color: 'white',
     textShadow: '0 0 8px #3b82f6, 0 0 20px #3b82f6, 0 0 40px #60a5fa, 0 0 80px #93c5fd',
     animation: 'ledPulse 1.5s ease-in-out infinite alternate',
   }}>센터 땅따먹기</span>
