@@ -43,6 +43,12 @@ export function useGameState() {
   const [startDate, setStartDate] = useState<string>('2026-01-01');
   const [isDateLoaded, setIsDateLoaded] = useState(false);
 
+  const [mergeGroups, setMergeGroups] = useState<{
+    display_name: string;
+    team_names: string[];
+    image_url?: string;
+  }[]>([]);
+
   // startDate를 Supabase에서 불러오기
   useEffect(() => {
     const fetchStartDate = async () => {
@@ -71,6 +77,12 @@ export function useGameState() {
     alert('저장 결과: ' + JSON.stringify({ data, error }));
   };
 
+const fetchMergeGroups = async () => {
+  const { data, error } = await supabase.from('team_merges').select('*');
+  if (error) { console.error('팀 합치기 불러오기 오류:', error); return; }
+  if (data) setMergeGroups(data);
+};
+  
   const fetchOccupations = async () => {
     try {
       const { data, error } = await supabase.from('country_occupations').select('*');
@@ -118,11 +130,10 @@ const fetchClubPoints = async (date?: string) => {
 
       if (error) throw error;
       if (data) {
-        const MERGE_GROUPS = [
-            { newName: 'EVERGREEN+BPM+MARE', teams: ['Evergreen', 'BPM', 'MARE'] },
-            { newName: 'A to Z+YITC', teams: ['A to Z', 'YITC'] },
-            { newName: 'EBS+The First', teams: ['EBS', 'The First'] },
-          ];
+        const MERGE_GROUPS = mergeGroups.map(g => ({
+          newName: g.display_name,
+          teams: g.team_names,
+        }));
         const mergedTeamNames = new Set(MERGE_GROUPS.flatMap(g => g.teams));
         const mergedData: any[] = [];
         MERGE_GROUPS.forEach(group => {
@@ -179,6 +190,7 @@ useEffect(() => {
   if (!isDateLoaded) return;
   
   const init = async () => {
+    await fetchMergeGroups();
     await fetchUsers();
     await fetchClubPoints(startDate);
     fetchOccupations();
