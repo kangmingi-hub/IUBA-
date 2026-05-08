@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
-import { Map as MapIcon, PlusCircle, History, UserPlus, LogIn, LogOut, MapPin, Flag, KeyRound } from 'lucide-react';
+import { Map as MapIcon, PlusCircle, History, UserPlus, LogIn, LogOut, MapPin, Flag, KeyRound, Users } from 'lucide-react';
 
 import HologramBackground from './components/background/HologramBackground';
 import WorldMap from './components/WorldMap';
@@ -23,6 +23,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import BackgroundMusic from './components/BackgroundMusic';
 import OccupancyBar from './components/OccupancyBar';
+import MergesPanel from './components/MergesPanel';
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 
@@ -77,6 +78,7 @@ export default function App() {
               { key: 'admin', icon: <PlusCircle className="w-4 h-4" />, label: '입력' },
               { key: 'territories', icon: <Flag className="w-4 h-4" />, label: '점령관리', badge: occupiedCountries.length },
               { key: 'members', icon: <UserPlus className="w-4 h-4" />, label: '멤버' },
+              { key: 'merges', icon: <Users className="w-4 h-4" />, label: '연합관리' },
             ] : []),
             { key: 'logs', icon: <History className="w-4 h-4" />, label: '기록' },
           ].map(tab => (
@@ -181,6 +183,14 @@ export default function App() {
               onDelete={handleDeleteMember}
               onColorChange={handleColorChange}  // ← 추가
             />
+            )}
+            {activeTab === 'merges' && currentUser?.role === 'admin' && (
+              <MergesPanel
+                players={gameState.players}
+                mergeGroups={mergeGroups}
+                onAdd={handleAddMergeGroup}
+                onDelete={handleDeleteMergeGroup}
+              />
             )}
             {activeTab === 'logs' && (
               <LogsPanel logs={gameState.logs} />
