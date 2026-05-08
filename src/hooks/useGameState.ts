@@ -539,6 +539,24 @@ const handleColorChange = async (playerId: string, color: string) => {
   }));
 };
 
+const handleAddMergeGroup = async (displayName: string, teamNames: string[], imageUrl?: string) => {
+  const { error } = await supabase.from('team_merges').insert({
+    display_name: displayName,
+    team_names: teamNames,
+    image_url: imageUrl || null,
+  });
+  if (error) { alert('저장 오류: ' + error.message); return; }
+  await fetchMergeGroups();
+  await fetchClubPoints();
+};
+
+const handleDeleteMergeGroup = async (id: string) => {
+  const { error } = await supabase.from('team_merges').delete().eq('id', id);
+  if (error) { alert('삭제 오류: ' + error.message); return; }
+  await fetchMergeGroups();
+  await fetchClubPoints();
+};
+  
   return {
     gameState, currentUser, clubPoints, isSyncing,
     startDate, setStartDate: handleStartDateChange,
@@ -546,5 +564,6 @@ const handleColorChange = async (playerId: string, color: string) => {
     handleAddMember, handleDeleteMember, handleAdminSubmit,
     handleCancelOccupation, healGhostData, buyCountry, buildInCountry, resetGame,
     cancelBuilding, resetManualPoints, handleColorChange, handleChangePassword,
+    mergeGroups, handleAddMergeGroup, handleDeleteMergeGroup,
   };
 }
