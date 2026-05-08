@@ -160,12 +160,9 @@ const fetchClubPoints = async (date?: string) => {
               return { ...existing, gold: club.remaining_evangelism_points, buildingPower: club.remaining_speech_points } as Player;
             }
 
-            const MERGE_MAP: Record<string, string> = {
-  'EVERGREEN+BPM+MARE': 'Evergreen',
-  'A TO Z+YITC': 'A to Z',
-              'EBS+The First': 'EBS',
-};
-const lookupName = MERGE_MAP[club.club_name] || club.club_name;
+const mergeGroup = mergeGroups.find(g => g.display_name === club.club_name);
+const lookupName = mergeGroup ? mergeGroup.team_names[0] : club.club_name;
+            
 const savedColor = usersData?.find((u: any) => u.username === lookupName)?.color;
             return {
               id: `club-${club.club_name.replace(/\s+/g, '-').toLowerCase()}`,
@@ -528,12 +525,8 @@ const handleColorChange = async (playerId: string, color: string) => {
   const player = gameState.players.find(p => p.id === playerId);
   if (!player) return;
 
-  const MERGE_MAP: Record<string, string> = {
-    'EVERGREEN+BPM+MARE': 'Evergreen',
-    'A TO Z+YITC': 'A to Z',
-    'EBS+The First': 'EBS',
-  };
-  const lookupName = MERGE_MAP[player.name] || player.name;
+  const mergeGroup = mergeGroups.find(g => g.display_name === player.name);
+  const lookupName = mergeGroup ? mergeGroup.team_names[0] : player.name;
 
   await supabase
     .from('users')
