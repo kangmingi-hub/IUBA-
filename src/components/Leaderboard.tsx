@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Users, Building2, RefreshCcw, Coins } from 'lucide-react';
+import { Building2, RefreshCcw, Coins } from 'lucide-react';
 import { Player, CountryState, User } from '../types';
 import { CLUB_IMAGES } from '../constants';
 import { clsx, type ClassValue } from 'clsx';
@@ -20,50 +20,18 @@ interface Props {
 }
 
 export default function Leaderboard({ clubPoints, players, countries, isSyncing, onRefresh, onReset, onResetManual, currentUser }: Props) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const animFrameRef = useRef<number>(0);
-  const isPausedRef = useRef(false);
-  const posRef = useRef(0);
-
-  const SCROLL_SPEED = 0.5; // px per frame — 조절 가능
+  const [paused, setPaused] = useState(false);
 
   const filteredClubs = clubPoints.filter(
     club => club.club_name !== 'Evergreen' && club.club_name !== 'BPM' && club.club_name !== 'MARE'
   );
 
-  // 무한 스크롤: 리스트를 3벌 복제해서 seamless loop
-  const tripleClubs = [...filteredClubs, ...filteredClubs, ...filteredClubs];
+  // 카드 한 장의 높이: p-3.5(14px*2) + gap-2.5(10px) + 내부 컨텐츠 ≈ 110px 로 측정 후 조정
+  // 실제로는 CSS로 처리하므로 duration만 조절하면 됩니다
+  const DURATION_PER_ITEM = 3; // 초 / 카드 1장 — 클수록 느림
+  const totalDuration = filteredClubs.length * DURATION_PER_ITEM;
 
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el || filteredClubs.length === 0) return;
-
-    const step = () => {
-      if (!isPausedRef.current && el) {
-        posRef.current += SCROLL_SPEED;
-        // 한 세트(1/3 높이) 지나면 처음으로 순간이동 (seamless)
-        const oneSetHeight = el.scrollHeight / 3;
-        if (posRef.current >= oneSetHeight) {
-          posRef.current -= oneSetHeight;
-        }
-        el.scrollTop = posRef.current;
-      }
-      animFrameRef.current = requestAnimationFrame(step);
-    };
-
-    animFrameRef.current = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(animFrameRef.current);
-  }, [filteredClubs.length]);
-
-  const handleMouseEnter = () => { isPausedRef.current = true; };
-  const handleMouseLeave = () => { isPausedRef.current = false; };
-  const handleTouchStart = () => { isPausedRef.current = true; };
-  const handleTouchEnd = () => {
-    // 터치 끝나면 1.5초 후 재개
-    setTimeout(() => { isPausedRef.current = false; }, 1500);
-  };
-
-  const ClubCard = ({ club, idx }: { club: typeof filteredClubs[0]; idx: number }) => {
+  const ClubCard = ({ club }: { club: typeof filteredClubs[0] }) => {
     const player = players.find(p => p.name === club.club_name);
     const ownedCount = player
       ? (Object.values(countries) as CountryState[]).filter(c => c.ownerId === player.id).length
@@ -75,15 +43,12 @@ export default function Leaderboard({ clubPoints, players, countries, isSyncing,
       : 0;
 
     return (
-      <div
-        className={cn(
-          "flex flex-col gap-2.5 p-3.5 rounded-2xl border transition-all flex-shrink-0",
-          ownedCount > 0
-            ? "border-blue-300/40 bg-white/85 hover:bg-white/95"
-            : "border-white/30 bg-white/80 hover:bg-white/90"
-        )}
-      >
-        {/* 클럽 정보 */}
+      <div className={cn(
+        "flex flex-col gap-2.5 p-3.5 rounded-2xl border transition-all",
+        ownedCount > 0
+          ? "border-blue-300/40 bg-white/85"
+          : "border-white/30 bg-white/80"
+      )}>
         <div className="flex items-center gap-3">
           <div className="relative">
             <img
@@ -103,7 +68,6 @@ export default function Leaderboard({ clubPoints, players, countries, isSyncing,
           </div>
         </div>
 
-        {/* 포인트 */}
         <div className="flex gap-2 pt-2 border-t border-slate-200/60">
           <div className="flex-1 flex flex-col gap-1 bg-amber-50 p-2.5 rounded-xl border border-amber-100">
             <div className="flex items-center gap-1.5">
@@ -140,6 +104,21 @@ export default function Leaderboard({ clubPoints, players, countries, isSyncing,
         boxShadow: '0 4px 32px rgba(120,150,190,0.15), inset 0 1px 0 rgba(255,255,255,0.85)',
       }}
     >
+      {/* keyframes 인라인 정의 */}
+      <style>{`
+        @keyframes marquee-up {
+          0%   { transform: translateY(0); }
+          100% { transform: translateY(-50%); }
+        }
+        .marquee-track {
+          animation: marquee-up ${totalDuration}s linear infinite;
+          animation-play-state: running;
+        }
+        .marquee-track.paused {
+          animation-play-state: paused;
+        }
+      `}</style>
+
       {/* 헤더 */}
       <div className="flex justify-between items-center px-5 py-4 border-b border-white/30">
         <h2 className="text-sm font-bold text-slate-700 tracking-wide">지역별 포인트 현황</h2>
@@ -155,47 +134,51 @@ export default function Leaderboard({ clubPoints, players, countries, isSyncing,
         </button>
       </div>
 
-      {/* 무한 스크롤 리스트 */}
+      {/* 뷰포트: overflow hidden으로 잘라냄 — 스크롤 불가 */}
       <div
-        ref={scrollRef}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        className="flex-1 overflow-hidden p-3"
-        style={{ overflowY: 'hidden' }} // 스크롤바 숨기되 scrollTop 조작은 가능
+        className="flex-1 overflow-hidden relative p-3"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onTouchStart={() => setPaused(true)}
+        onTouchEnd={() => setTimeout(() => setPaused(false), 1500)}
       >
+        {/* 상단 페이드 */}
+        <div className="pointer-events-none absolute top-0 left-0 right-0 h-8 z-10"
+          style={{ background: 'linear-gradient(to bottom, rgba(240,245,255,0.7), transparent)' }} />
+        {/* 하단 페이드 */}
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 z-10"
+          style={{ background: 'linear-gradient(to top, rgba(240,245,255,0.7), transparent)' }} />
+
         {filteredClubs.length === 0 && !isSyncing && (
           <div className="text-center py-10">
-            <p className="text-xs text-white/30">데이터를 불러올 수 없습니다.</p>
+            <p className="text-xs text-slate-400">데이터를 불러올 수 없습니다.</p>
           </div>
         )}
 
-        {/* 3벌 복제된 카드 목록 */}
-        <div className="space-y-2.5">
-          {tripleClubs.map((club, idx) => (
-            <ClubCard key={`${club.club_name}-${idx}`} club={club} idx={idx} />
-          ))}
-        </div>
+        {/* 트랙: 원본 + 사본 2벌. -50% translateY 시 정확히 원본 위치로 복귀 */}
+        {filteredClubs.length > 0 && (
+          <div className={cn("marquee-track space-y-2.5", paused && "paused")}>
+            {/* 원본 */}
+            {filteredClubs.map((club) => (
+              <ClubCard key={`a-${club.club_name}`} club={club} />
+            ))}
+            {/* 사본 — 시각적으로 이어붙임 */}
+            {filteredClubs.map((club) => (
+              <ClubCard key={`b-${club.club_name}`} club={club} />
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* 상단/하단 페이드 그라데이션 (시각적 효과) */}
-      <div className="pointer-events-none absolute left-0 right-0 h-8 bg-gradient-to-b from-white/30 to-transparent z-10" style={{ top: '56px' }} />
-      <div className="pointer-events-none absolute left-0 right-0 bottom-0 h-8 bg-gradient-to-t from-white/30 to-transparent z-10" />
 
       {/* 어드민 버튼 */}
       {currentUser?.role === 'admin' && (
         <div className="p-3 border-t border-white/30 space-y-2">
-          <button
-            onClick={onResetManual}
-            className="w-full py-2.5 text-[9px] font-black text-white/40 hover:text-amber-300 transition-colors uppercase tracking-[0.2em] bg-white/8 border border-white/15 rounded-xl hover:bg-amber-400/10 hover:border-amber-300/30"
-          >
+          <button onClick={onResetManual}
+            className="w-full py-2.5 text-[9px] font-black text-white/40 hover:text-amber-300 transition-colors uppercase tracking-[0.2em] bg-white/8 border border-white/15 rounded-xl hover:bg-amber-400/10 hover:border-amber-300/30">
             수동 추가 점수 초기화
           </button>
-          <button
-            onClick={onReset}
-            className="w-full py-2.5 text-[9px] font-black text-white/40 hover:text-red-300 transition-colors uppercase tracking-[0.2em] bg-white/8 border border-white/15 rounded-xl hover:bg-red-400/10 hover:border-red-300/30"
-          >
+          <button onClick={onReset}
+            className="w-full py-2.5 text-[9px] font-black text-white/40 hover:text-red-300 transition-colors uppercase tracking-[0.2em] bg-white/8 border border-white/15 rounded-xl hover:bg-red-400/10 hover:border-red-300/30">
             게임 지표 초기화
           </button>
         </div>
