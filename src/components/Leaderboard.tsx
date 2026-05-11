@@ -26,8 +26,6 @@ export default function Leaderboard({ clubPoints, players, countries, isSyncing,
     club => club.club_name !== 'Evergreen' && club.club_name !== 'BPM' && club.club_name !== 'MARE'
   );
 
-  // 카드 한 장의 높이: p-3.5(14px*2) + gap-2.5(10px) + 내부 컨텐츠 ≈ 110px 로 측정 후 조정
-  // 실제로는 CSS로 처리하므로 duration만 조절하면 됩니다
   const DURATION_PER_ITEM = 3; // 초 / 카드 1장 — 클수록 느림
   const totalDuration = filteredClubs.length * DURATION_PER_ITEM;
 
@@ -104,7 +102,6 @@ export default function Leaderboard({ clubPoints, players, countries, isSyncing,
         boxShadow: '0 4px 32px rgba(120,150,190,0.15), inset 0 1px 0 rgba(255,255,255,0.85)',
       }}
     >
-      {/* keyframes 인라인 정의 */}
       <style>{`
         @keyframes marquee-up {
           0%   { transform: translateY(0); }
@@ -134,9 +131,10 @@ export default function Leaderboard({ clubPoints, players, countries, isSyncing,
         </button>
       </div>
 
-      {/* 뷰포트: overflow hidden으로 잘라냄 — 스크롤 불가 */}
+      {/* ✅ flex-1 제거, max-h로 높이 고정 — 복제본은 overflow hidden에 잘려서 안 보임 */}
       <div
-        className="flex-1 overflow-hidden relative p-3"
+        className="relative overflow-hidden p-3"
+        style={{ maxHeight: 'calc(100vh - 320px)' }}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onTouchStart={() => setPaused(true)}
@@ -155,14 +153,13 @@ export default function Leaderboard({ clubPoints, players, countries, isSyncing,
           </div>
         )}
 
-        {/* 트랙: 원본 + 사본 2벌. -50% translateY 시 정확히 원본 위치로 복귀 */}
         {filteredClubs.length > 0 && (
           <div className={cn("marquee-track space-y-2.5", paused && "paused")}>
             {/* 원본 */}
             {filteredClubs.map((club) => (
               <ClubCard key={`a-${club.club_name}`} club={club} />
             ))}
-            {/* 사본 — 시각적으로 이어붙임 */}
+            {/* 사본 — 뷰포트 밖으로 잘려서 안 보임 */}
             {filteredClubs.map((club) => (
               <ClubCard key={`b-${club.club_name}`} club={club} />
             ))}
@@ -172,7 +169,7 @@ export default function Leaderboard({ clubPoints, players, countries, isSyncing,
 
       {/* 어드민 버튼 */}
       {currentUser?.role === 'admin' && (
-        <div className="p-3 border-t border-white/30 space-y-2">
+        <div className="mt-auto p-3 border-t border-white/30 space-y-2">
           <button onClick={onResetManual}
             className="w-full py-2.5 text-[9px] font-black text-white/40 hover:text-amber-300 transition-colors uppercase tracking-[0.2em] bg-white/8 border border-white/15 rounded-xl hover:bg-amber-400/10 hover:border-amber-300/30">
             수동 추가 점수 초기화
