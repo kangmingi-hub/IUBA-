@@ -170,6 +170,15 @@ export default function Leaderboard({ clubPoints, players, countries, isSyncing,
         onWheel={() => { pause(); resume(2000); }} // ✅ 마우스 휠 조작 시 멈추고 2초 후 재개
         onTouchStart={() => pause()}
         onTouchEnd={() => resume(2000)}
+        onScroll={() => {
+          const el = scrollRef.current;
+          if (!el) return;
+          const oneSetHeight = el.scrollHeight / 2;
+          if (el.scrollTop >= oneSetHeight) {
+            el.scrollTop = el.scrollTop - oneSetHeight;
+            posRef.current = el.scrollTop;
+          }
+        }}
       >
         {filteredClubs.length === 0 && !isSyncing && (
           <div className="text-center py-10">
