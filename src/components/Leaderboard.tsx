@@ -21,6 +21,7 @@ interface Props {
 
 export default function Leaderboard({ clubPoints, players, countries, isSyncing, onRefresh, onReset, onResetManual, currentUser }: Props) {
   const [paused, setPaused] = useState(false);
+  const [touchScrollable, setTouchScrollable] = useState(false); // ✅ 이 줄 추가
 
   const filteredClubs = clubPoints.filter(
     club => club.club_name !== 'Evergreen' && club.club_name !== 'BPM' && club.club_name !== 'MARE'
@@ -133,12 +134,12 @@ export default function Leaderboard({ clubPoints, players, countries, isSyncing,
 
       {/* ✅ flex-1 제거, max-h로 높이 고정 — 복제본은 overflow hidden에 잘려서 안 보임 */}
       <div
-        className="relative overflow-hidden p-3"
-        style={{ maxHeight: 'calc(100vh - 320px)' }}
+        className="relative p-3"
+        style={{ maxHeight: 'calc(100vh - 320px)', overflowY: touchScrollable ? 'auto' : 'hidden' }}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
-        onTouchStart={() => setPaused(true)}
-        onTouchEnd={() => setTimeout(() => setPaused(false), 1500)}
+        onTouchStart={() => { setPaused(true); setTouchScrollable(true); }}
+        onTouchEnd={() => setTimeout(() => { setPaused(false); setTouchScrollable(false); }, 1500)}
       >
         {/* 상단 페이드 */}
         <div className="pointer-events-none absolute top-0 left-0 right-0 h-8 z-10"
