@@ -22,6 +22,7 @@ interface Props {
 export default function Leaderboard({ clubPoints, players, countries, isSyncing, onRefresh, onReset, onResetManual, currentUser }: Props) {
   const [paused, setPaused] = useState(false);
   const [touchScrollable, setTouchScrollable] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const filteredClubs = clubPoints.filter(
     club => club.club_name !== 'Evergreen' && club.club_name !== 'BPM' && club.club_name !== 'MARE'
@@ -134,12 +135,19 @@ export default function Leaderboard({ clubPoints, players, countries, isSyncing,
 
       {/* 뷰포트 */}
       <div
+        ref={scrollRef}
         className="relative p-3"
         style={{ maxHeight: 'calc(100vh - 320px)', overflowY: touchScrollable ? 'auto' : 'hidden' }}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onTouchStart={() => { setPaused(true); setTouchScrollable(true); }}
         onTouchEnd={() => setTimeout(() => { setPaused(false); setTouchScrollable(false); }, 1500)}
+        onScroll={() => {
+          const el = scrollRef.current;
+          if (!el) return;
+          const maxScroll = el.scrollHeight / 2;
+          if (el.scrollTop > maxScroll) el.scrollTop = maxScroll;
+        }}
       >
         {/* 상단 페이드 */}
         <div className="pointer-events-none absolute top-0 left-0 right-0 h-8 z-10"
