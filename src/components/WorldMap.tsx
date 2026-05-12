@@ -10,6 +10,7 @@ import { CountryState, Player } from '../types';
 import { COUNTRY_PRICES, DEFAULT_COUNTRY_PRICE, BUILDING_TIERS, CLUB_IMAGES, BUILDING_IMAGES, COUNTRY_NAME_MAP, getBuildingTiers } from '../constants';
 import { Globe as GlobeIcon, ZoomIn, ArrowLeft, RefreshCcw } from 'lucide-react';
 import defenseIcon from '../../public/defense-tower.png';
+import { supabase } from '../lib/supabase';
 
 interface WorldMapProps {
   countries: Record<string, CountryState>;
@@ -42,12 +43,57 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
   const [isRotating, setIsRotating] = useState(true);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>(null);
   const isDraggingRef = useRef(false);
+  const [attackingCountries, setAttackingCountries] = useState<Set<string>>(new Set());
+  const [warCountries, setWarCountries] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
       .then(res => res.json())
       .then(data => setTopology(data));
   }, []);
+
+  useEffect(() => {
+  fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+    .then(res => res.json())
+    .then(data => setTopology(data));
+}, []);
+
+// ✅ 여기에 추가
+useEffect(() => {
+  const fetchAttackSchedules = async () => {
+    const { data } = await supabase.from('attack_schedules').select('*').eq('status', 'scheduled');
+    if (!data) return;
+
+    const nowTime = Date.now();
+    const warning = new Set<string>();
+    const war = new Set<string>();
+
+    data.forEach((s: any) => {
+      const attackTime = new Date(s.attack_time).getTime();
+      if (attackTime <= nowTime) {
+        war.add(s.target_country_name);
+      } else {
+        warning.add(s.target_country_name);
+      }
+    });
+
+    setAttackingCountries(warning);
+    setWarCountries(war);
+  };
+
+  fetchAttackSchedules();
+
+  const channel = supabase.channel('attack_schedules_map')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'attack_schedules' }, fetchAttackSchedules)
+    .subscribe();
+
+  const interval = setInterval(fetchAttackSchedules, 1000);
+
+  return () => {
+    supabase.removeChannel(channel);
+    clearInterval(interval);
+  };
+}, []);
 
   useEffect(() => {
     const el = containerRef.current;
