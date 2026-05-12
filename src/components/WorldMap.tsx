@@ -414,9 +414,19 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
             .attr('font-size', defSize * 0.28)
             .attr('font-weight', '900')
             .attr('class', 'pointer-events-none')
-            .text(defenseInfo.defense_buildings);
+             .text(defenseInfo.defense_buildings);
         }
-      });
+      }
+
+      // ✅ 여기에 추가 - 이미지들 다 그린 후 맨 위에 오버레이
+      if (state.isDestroyed) {
+        gPerspective.append('path').datum(feature).attr('d', path as any)
+          .attr('fill', 'rgba(0, 0, 0, 0.55)')
+          .attr('class', 'pointer-events-none')
+          .attr('transform', `translate(0, -${targetDepth})`);
+      }
+
+    }); // ← forEach 닫히는 곳
     }
 
     return () => { tooltip.remove(); };
