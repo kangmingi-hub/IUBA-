@@ -47,9 +47,7 @@ export default function App() {
   const [selectedCountry, setSelectedCountry] = useState<{ id: string; name: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'map' | 'admin' | 'logs' | 'members' | 'territories'>('map');
   const [showChangePassword, setShowChangePassword] = useState(false);
-  conses] = useState<Record<string, { defense_buildings: number; defense_power: number }>>({});
-
-const [defenses, setDefenses] = useState<Record<string, { defense_buildings: number; defense_power: number }>>({});
+  const [defenses, setDefenses] = useState<Record<string, { defense_buildings: number; defense_power: number }>>({});
 
 useEffect(() => {
   const fetchDefenses = async () => {
