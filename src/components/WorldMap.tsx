@@ -161,12 +161,14 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
 
 // ─── 비행 유닛(전투기, 마귀 등) 애니메이션 ────────────────────────
   useEffect(() => {
-    // 2D 모드에서만 우선 적용 (3D 뷰의 경우 곡면 궤적 계산이 추가로 필요합니다)
+    // 1. 2D 모드에서만 실행되는지 확인합니다.
     if (!topology || !svgRef.current || viewMode !== '2d') return;
 
     const svg = d3.select(svgRef.current);
+    // 가장 안전하게 맵 전체를 감싸는 main-group을 타겟으로 잡습니다.
     const gMain = svg.select('.main-group');
-    const gPerspective = gMain.select('g');
+    if (gMain.empty()) return; // 지도가 아직 안 그려졌으면 리턴
+
     const width = svgRef.current.clientWidth;
     const height = svgRef.current.clientHeight;
     
@@ -180,68 +182,82 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
       (f: any) => f.id !== '010' && f.properties.name !== 'Antarctica'
     );
 
-    // 비행 유닛 생성 함수
     const spawnFlyingUnit = () => {
-      // 1. 공격받고 있는 국가들(warCountries) 중 하나를 무작위로 타겟팅
-      const targets = Array.from(warCountriesRef.current);
-      if (targets.length === 0) return; // 타겟이 없으면 생성 안 함
+      let targets = Array.from(warCountriesRef.current);
+      let targetFeature;
 
-      const targetName = targets[Math.floor(Math.random() * targets.length)];
-      const targetFeature = filteredFeatures.find(
-        (f: any) => f.properties.name === targetName || f.properties.name === COUNTRY_NAME_MAP[targetName]
-      );
+      // 2. 타겟 설정 로직 개선
+      if (targets.length > 0) {
+        // 전쟁 중인 국가가 있다면 그 중 하나를 타겟팅
+        const targetName = targets[Math.floor(Math.random() * targets.length)];
+        targetFeature = filteredFeatures.find(
+          (f: any) => f.properties.name === targetName || f.properties.name === COUNTRY_NAME_MAP[targetName]
+        );
+      } else {
+        // 🚨 디버깅/테스트용: 전쟁 중인 국가가 없으면 무작위 국가 하나를 타겟으로 잡습니다!
+        targetFeature = filteredFeatures[Math.floor(Math.random() * filteredFeatures.length)];
+      }
 
       if (!targetFeature) return;
 
       const targetCentroid = path.centroid(targetFeature);
-      if (!targetCentroid || isNaN(targetCentroid[0])) return;
+      // 중심점을 못 찾으면 에러 방지
+      if (!targetCentroid || isNaN(targetCentroid[0]) || isNaN(targetCentroid[1])) return;
 
-      // 2. 출발지 설정 (화면 밖 랜덤한 위치에서 날아오도록 설정)
+      // 3. 출발지 설정 (화면 밖 둥근 궤도 어딘가)
       const startAngle = Math.random() * Math.PI * 2;
       const spawnRadius = Math.max(width, height) * 0.8; 
       const startX = width / 2 + Math.cos(startAngle) * spawnRadius;
       const startY = height / 2 + Math.sin(startAngle) * spawnRadius;
 
-      // 3. 비행 유닛이 타겟을 바라보도록 각도 계산 (Rotation)
+      // 4. 각도 계산 (유닛이 날아가는 방향 바라보기)
       const dx = targetCentroid[0] - startX;
       const dy = targetCentroid[1] - startY;
-      const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90; // +90은 이모지/이미지의 기본 방향에 따라 조절
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
 
-      // 4. 비행 유닛 종류 선택 (전투기 or 마귀)
       const unitIcon = Math.random() > 0.5 ? '✈️' : '👿';
-      const duration = 2000 + Math.random() * 1500; // 2~3.5초에 걸쳐 날아감
+      const duration = 2000 + Math.random() * 1000; // 2~3초
 
-      // 5. D3 엘리먼트 추가 및 트랜지션(애니메이션) 실행
-      const unit = gPerspective.append('text')
+      // 5. 유닛 렌더링 (gMain에 직접 붙입니다)
+      const unit = gMain.append('text')
         .attr('x', startX)
         .attr('y', startY)
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'middle')
-        .attr('font-size', '24px')
-        .attr('class', 'pointer-events-none drop-shadow-md') // 클릭 방지 및 그림자
-        .attr('transform', `rotate(${angle}, ${startX}, ${startY})`) // 타겟을 향해 회전
+        .attr('font-size', '20px')
+        .attr('class', 'pointer-events-none') // 마우스 이벤트 방해 금지
+        .attr('transform', `rotate(${angle}, ${startX}, ${startY})`)
         .text(unitIcon);
 
-      // 날아가는 애니메이션
+      // 6. 애니메이션 실행
       unit.transition()
         .duration(duration)
-        .ease(d3.easeCubicIn) // 처음엔 느리다가 타겟에 가까워질수록 빨라짐
+        .ease(d3.easeCubicIn)
         .attr('x', targetCentroid[0])
         .attr('y', targetCentroid[1])
         .attr('transform', `rotate(${angle}, ${targetCentroid[0]}, ${targetCentroid[1]})`)
         .on('end', function() {
-          // 타겟에 도달하면 엘리먼트 삭제
-          d3.select(this).remove();
+          // 타겟 도달 시 폭발 효과 추가 (옵션)
+          d3.select(this)
+            .text('💥')
+            .transition().duration(500)
+            .attr('font-size', '30px')
+            .style('opacity', 0)
+            .remove();
         });
     };
 
-    // 0.8초마다 유닛 1개씩 생성
-    const spawnerInterval = setInterval(spawnFlyingUnit, 800);
+    // 테스트를 위해 1초마다 1대씩 계속 스폰시킵니다.
+    const spawnerInterval = setInterval(spawnFlyingUnit, 1000);
 
     return () => {
       clearInterval(spawnerInterval);
+      // 컴포넌트 언마운트 시 날아다니던 애들 싹 지우기
+      gMain.selectAll('text').filter(function() {
+        return ['✈️', '👿', '💥'].includes((d3.select(this).text() as string));
+      }).remove();
     };
-  }, [topology, viewMode]); // 의존성 배열에 topology와 viewMode 추가
+  }, [topology, viewMode]);
   
   // ─── 메인 지도 렌더링 ────────────────────────────────────────────────────
   useEffect(() => {
