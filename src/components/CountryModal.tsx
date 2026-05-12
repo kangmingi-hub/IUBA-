@@ -18,8 +18,9 @@ interface Props {
   currentUser: User | null;
   onClose: () => void;
   onBuy: (countryId: string, playerId: string, countryName: string) => void;
-onBuild: (countryId: string) => void;
+  onBuild: (countryId: string) => void;
   onBuildDefense: (countryId: string) => void;
+  onRestore: (countryId: string) => void;
 }
 
 export default function CountryModal({ selectedCountry, countries, players, currentUser, onClose, onBuy, onBuild, onBuildDefense }: Props) {
@@ -234,6 +235,21 @@ const myPlayer = players.find(p => p.name === resolvedName);
                       🛡️ 방어 건물 건설 (50 MINERAL)
                     </button>
                   )}
+
+{ownedCountry?.isDestroyed && canBuild && (
+  <button
+    onClick={() => onRestore(selectedCountry.id)}
+    className="w-full py-4 rounded-2xl font-black text-white flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+    style={{
+      background: 'linear-gradient(135deg, rgba(239,68,68,0.8), rgba(220,38,38,0.8))',
+      border: '1px solid rgba(239,68,68,0.5)',
+      boxShadow: '0 4px 20px rgba(239,68,68,0.3)',
+    }}
+  >
+    🔧 영토 복구 (30 MINERAL)
+  </button>
+)}
+                  
                   {canBuild ? (
                     <button
                       onClick={() => onBuild(selectedCountry.id)}
