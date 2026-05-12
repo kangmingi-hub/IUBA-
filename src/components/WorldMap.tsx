@@ -317,6 +317,23 @@ useEffect(() => {
             d3.select(this).attr('fill-opacity', 1).attr('stroke', '#94a3b8').attr('stroke-width', '0.5').attr('vector-effect', 'non-scaling-stroke');
           });
 
+        if (attackingCountries.has(countryName)) {
+  countryG.append('path').datum(feature).attr('d', path as any)
+    .attr('fill', 'none')
+    .attr('stroke', '#ef4444')
+    .attr('stroke-width', '3')
+    .attr('vector-effect', 'non-scaling-stroke')
+    .attr('class', 'pointer-events-none warning-border')
+    .style('animation', 'warningPulse 0.8s ease-in-out infinite alternate');
+}
+
+// ✅ 전쟁 오버레이 (빨강 반투명)
+if (warCountries.has(countryName)) {
+  countryG.append('path').datum(feature).attr('d', path as any)
+    .attr('fill', 'rgba(239, 68, 68, 0.4)')
+    .attr('class', 'pointer-events-none');
+}
+
         // isDestroyed 오버레이
         if (state?.isDestroyed) {
           countryG.append('path').datum(feature).attr('d', path as any)
@@ -518,6 +535,19 @@ useEffect(() => {
         touchAction: 'pan-y',
       }}
     >
+
+ <style>{`
+      @keyframes warningPulse {
+        0% { stroke-opacity: 0.2; stroke-width: 2px; }
+        100% { stroke-opacity: 1; stroke-width: 5px; }
+      }
+      .warning-border {
+        animation: warningPulse 0.8s ease-in-out infinite alternate;
+      }
+    `}</style>
+
+    <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing"
+      
       <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing"
         style={{ willChange: 'transform' }}
         />
