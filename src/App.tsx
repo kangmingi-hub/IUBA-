@@ -223,6 +223,9 @@ export default function App() {
         onClose={() => setSelectedCountry(null)}
         onBuy={buyCountry}
         onBuild={buildInCountry}
+        onBuildDefense={(countryId) => {
+          // TODO: DefensePanel의 buyDefenseBuilding 로직 연결
+        }}
         currentUser={currentUser}
       />
 
