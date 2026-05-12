@@ -545,8 +545,6 @@ useEffect(() => {
         animation: warningPulse 0.8s ease-in-out infinite alternate;
       }
     `}</style>
-
-    <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing"
       
       <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing"
         style={{ willChange: 'transform' }}
