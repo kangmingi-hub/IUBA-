@@ -475,6 +475,49 @@ useEffect(() => {
     const player = gameState.players.find(p => p.id === country.ownerId);
     if (!player || player.buildingPower < nextTier.cost) return;
 
+const buildDefense = async (countryId: string) => {
+  const country = gameState.countries[countryId];
+  if (!country?.ownerId) return;
+  const player = gameState.players.find(p => p.id === country.ownerId);
+  const DEFENSE_COST = 50;
+  if (!player || player.gold < DEFENSE_COST) {
+    alert('미네랄이 부족합니다! (방어 건물: 50 MINERAL)');
+    return;
+  }
+
+  await supabase.from('country_purchases').insert({
+    club_name: player.name,
+    country_name: country.name,
+    price_paid: DEFENSE_COST,
+    purchased_at: new Date().toISOString()
+  });
+
+  // country_defenses 테이블 업서트
+  const { data: existing } = await supabase
+    .from('country_defenses')
+    .select('*')
+    .eq('country_id', countryId)
+    .single();
+
+  if (existing) {
+    await supabase.from('country_defenses').update({
+      defense_buildings: existing.defense_buildings + 1,
+      defense_power: existing.defense_power + 10
+    }).eq('country_id', countryId);
+  } else {
+    await supabase.from('country_defenses').insert({
+      country_id: countryId,
+      country_name: country.name,
+      owner_id: player.id,
+      defense_power: 10,
+      defense_buildings: 1
+    });
+  }
+
+  addLog(`${player.name}님이 ${country.name}에 방어 건물을 건설했습니다! (50 MINERAL)`, 'construction');
+  await fetchClubPoints();
+};
+    
     const newBuildings = country.buildings + 1;
 
     await supabase.from('country_occupations')
@@ -564,7 +607,7 @@ const handleDeleteMergeGroup = async (id: string) => {
     fetchClubPoints, handleLogin, handleLogout,
     handleAddMember, handleDeleteMember, handleAdminSubmit,
     handleCancelOccupation, healGhostData, buyCountry, buildInCountry, resetGame,
-    cancelBuilding, resetManualPoints, handleColorChange, handleChangePassword,
+    cancelBuilding, resetManualPoints, handleColorChange, handleChangePassword, buildDefense,
     mergeGroups, handleAddMergeGroup, handleDeleteMergeGroup,
   };
 }
