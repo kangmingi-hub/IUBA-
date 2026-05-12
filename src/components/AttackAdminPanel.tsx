@@ -26,6 +26,11 @@ export default function AttackAdminPanel({ players, countries }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [defenses, setDefenses] = useState<{ country_id: string; defense_buildings: number; defense_power: number }[]>([]);
   const [now, setNow] = useState(Date.now());
+  const [scheduledTime, setScheduledTime] = useState<string>(() => {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() + 10);
+  return now.toISOString().slice(0, 16); // datetime-local 형식
+});
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
@@ -53,35 +58,37 @@ export default function AttackAdminPanel({ players, countries }: Props) {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const triggerAttack = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/schedule-attack`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({}),
-        }
-      );
+const triggerAttack = async () => {
+  setIsLoading(true);
+  try {
+    const occupiedList = Object.values(countries).filter(c => c.ownerId);
+    if (occupiedList.length === 0) { alert('점령된 나라가 없습니다!'); return; }
 
+    const shuffled = [...occupiedList].sort(() => Math.random() - 0.5);
+    const targets = shuffled.slice(0, Math.min(5, shuffled.length));
 
-      
-      const data = await res.json();
-      if (res.ok) {
-        alert(`⚔️ 공격 예약 완료!\n대상: ${data.target}\n공격력: ${data.attackPower}\n공격시간: ${new Date(data.attackTime).toLocaleString('ko-KR')}`);
-      } else {
-        alert('오류: ' + (data.error || '알 수 없는 오류'));
-      }
-    } catch (err) {
-      alert('요청 실패: ' + err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+   const attackTime = new Date(scheduledTime).toISOString();
+    
+    const inserts = targets.map(country => ({
+      attack_time: attackTime,
+      attack_power: Math.floor(Math.random() * 61) + 20,
+      target_country_id: country.id,
+      target_country_name: country.name,
+      target_owner_id: country.ownerId,
+      status: 'scheduled'
+    }));
+
+    await supabase.from('attack_schedules').insert(inserts);
+
+    const summary = targets.map((c, i) => `${c.name} (공격력: ${inserts[i].attack_power})`).join('\n');
+    alert(`⚔️ 공격 예약 완료! ${scheduledMinutes}분 후\n\n${summary}`);
+    fetchSchedules();
+  } catch (err) {
+    alert('오류: ' + err);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const cancelSchedule = async (id: string) => {
     if (!window.confirm('이 공격 일정을 취소하시겠습니까?')) return;
@@ -233,7 +240,7 @@ const triggerImmediateAttack = async () => {
             ) : (
               <>
                 <Zap className="w-5 h-5" />
-                랜덤 공격 예약 (5시간 후)
+                랜덤 공격 예약 ({new Date(scheduledTime).toLocaleString('ko-KR')})
               </>
             )}
           </motion.button>
