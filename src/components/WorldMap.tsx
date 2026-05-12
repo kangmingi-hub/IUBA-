@@ -255,7 +255,11 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
 
         countryG.append('path').datum(feature).attr('d', path as any)
           .attr('class', 'country-top cursor-pointer')
-          .attr('fill', isOwned ? players.find(p => p.id === state!.ownerId)?.color || '#e2e8f0' : '#e2e8f0')
+          .attr('fill', () => {
+              if (!isOwned) return '#e2e8f0';
+              if (state?.isDestroyed) return '#94a3b8'; // 회색 - 점령당한 상태
+              return players.find(p => p.id === state!.ownerId)?.color || '#e2e8f0';
+            })
           .attr('stroke', '#94a3b8').attr('stroke-width', '0.5').attr('vector-effect', 'non-scaling-stroke')
           .on('click', (event, d: any) => onCountryClick(d.properties.name, d.properties.name))
           .on('mouseover', function(event, d: any) {
@@ -281,9 +285,12 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
       gCountries.selectAll('path').data(filteredFeatures).enter().append('path').attr('d', path as any)
         .attr('class', 'country-top cursor-pointer')
         .attr('stroke', '#94a3b8').attr('stroke-width', 0.5).attr('vector-effect', 'non-scaling-stroke')
-        .attr('fill', (d: any) => countries[d.properties.name]?.ownerId
-          ? players.find(p => p.id === countries[d.properties.name].ownerId)?.color || '#CBD5E1'
-          : '#CBD5E1')
+        .attr('fill', (d: any) => {
+            const state = countries[d.properties.name];
+            if (!state?.ownerId) return '#CBD5E1';
+            if (state.isDestroyed) return '#94a3b8'; // 회색 - 점령당한 상태
+            return players.find(p => p.id === state.ownerId)?.color || '#CBD5E1';
+          })
         .on('click', (event, d: any) => onCountryClick(d.properties.name, d.properties.name))
         .on('mouseover', function(event, d: any) {
           handleMouseOver(event, d);
