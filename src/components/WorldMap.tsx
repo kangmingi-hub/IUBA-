@@ -416,7 +416,6 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
             .attr('class', 'pointer-events-none')
              .text(defenseInfo.defense_buildings);
         }
-      }
 
       // ✅ 여기에 추가 - 이미지들 다 그린 후 맨 위에 오버레이
       if (state.isDestroyed) {
