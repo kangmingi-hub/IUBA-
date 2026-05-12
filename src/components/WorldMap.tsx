@@ -9,6 +9,7 @@ import * as topojson from 'topojson-client';
 import { CountryState, Player } from '../types';
 import { COUNTRY_PRICES, DEFAULT_COUNTRY_PRICE, BUILDING_TIERS, CLUB_IMAGES, BUILDING_IMAGES, COUNTRY_NAME_MAP, getBuildingTiers } from '../constants';
 import { Globe as GlobeIcon, ZoomIn, ArrowLeft, RefreshCcw } from 'lucide-react';
+import defenseIcon from '../../public/defense-tower.png';
 
 interface WorldMapProps {
   countries: Record<string, CountryState>;
@@ -367,7 +368,7 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
         if (defenseInfo && defenseInfo.defense_buildings > 0) {
           const defSize = imageSize * 0.6;
           gPerspective.append('image')
-            .attr('href', 'https://cdn-icons-png.flaticon.com/512/1528/1528674.png')
+            .attr('href', defenseIcon)
             .attr('x', centroid[0] - imageSize * 0.5 - defSize / 2)
             .attr('y', centroid[1] - imageSize * 0.3 - defSize / 2 - targetDepth)
             .attr('width', defSize).attr('height', defSize)
