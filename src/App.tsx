@@ -178,7 +178,7 @@ export default function App() {
       onStartDateChange={setStartDate}
       onRefresh={fetchClubPoints}
     />
-    <AttackAdminPanel players={gameState.players} />
+    <AttackAdminPanel players={gameState.players} countries={gameState.countries} />
   </div>
 )}
             {activeTab === 'territories' && currentUser?.role === 'admin' && (
