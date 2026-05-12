@@ -511,34 +511,38 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
   }, [topology, countries, players, viewMode, rotation, zoomLevel]);
 
   // ─── warEvents 파티클 애니메이션 (별도 useEffect) ────────────────────────
-  useEffect(() => {
-    if (!topology || !svgRef.current || viewMode !== '2d') return;
+useEffect(() => {
+  if (!topology || !svgRef.current || viewMode !== '2d') return;
 
-    const svg = d3.select(svgRef.current);
-    const gMain = svg.select('.main-group');
-    const gPerspective = gMain.select('g');
+  const svg = d3.select(svgRef.current);
+  const gMain = svg.select('.main-group');
+  const gPerspective = gMain.select('g');
 
-    const width = svgRef.current.clientWidth;
-    const height = svgRef.current.clientHeight;
-    const projection = d3.geoMercator()
-      .scale(width / 6.5)
-      .translate([width / 2, height / 1.8]);
-    const path = d3.geoPath().projection(projection);
-    const features = topojson.feature(topology, topology.objects.countries) as any;
-    const filteredFeatures = features.features.filter((f: any) => f.id !== '010' && f.properties.name !== 'Antarctica');
+  const width = svgRef.current.clientWidth;
+  const height = svgRef.current.clientHeight;
+  const projection = d3.geoMercator()
+    .scale(width / 6.5)
+    .translate([width / 2, height / 1.8]);
+  const path = d3.geoPath().projection(projection);
+  const features = topojson.feature(topology, topology.objects.countries) as any;
+  const filteredFeatures = features.features.filter((f: any) => f.id !== '010' && f.properties.name !== 'Antarctica');
 
-    warEvents.forEach((warEvent) => {
-      const mappedName = COUNTRY_NAME_MAP[warEvent.country_name] || warEvent.country_name;
-      const feature = filteredFeatures.find((f: any) =>
-        f.properties.name === mappedName || f.properties.name === warEvent.country_name
-      );
-      if (!feature) return;
+  const intervals: ReturnType<typeof setInterval>[] = [];
 
-      const centroid = path.centroid(feature);
-      if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) return;
+  warEvents.forEach((warEvent) => {
+    const mappedName = COUNTRY_NAME_MAP[warEvent.country_name] || warEvent.country_name;
+    const feature = filteredFeatures.find((f: any) =>
+      f.properties.name === mappedName || f.properties.name === warEvent.country_name
+    );
+    if (!feature) return;
 
-      const isConquered = warEvent.result === 'conquered';
+    const centroid = path.centroid(feature);
+    if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) return;
 
+    const isConquered = warEvent.result === 'conquered';
+
+    // 파티클 한 번 터뜨리는 함수
+    const burst = () => {
       // 파티클 30개
       for (let i = 0; i < 30; i++) {
         const angle = Math.random() * 2 * Math.PI;
@@ -582,8 +586,19 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
         .text(isConquered ? '💥' : '🛡️')
         .transition().duration(2000).ease(d3.easeQuadOut)
         .attr('y', centroid[1] - 40).attr('opacity', 0).remove();
-    });
-  }, [warEvents, topology, viewMode]);
+    };
+
+    // 즉시 한 번 터뜨리고, 2초마다 반복, 30초 후 정지
+    burst();
+    const id = setInterval(burst, 2000);
+    intervals.push(id);
+    setTimeout(() => clearInterval(id), 30000);
+  });
+
+  return () => {
+    intervals.forEach(clearInterval);
+  };
+}, [warEvents, topology, viewMode]);
 
   useEffect(() => {
     if (!topology || !svgRef.current || !zoomRef.current || viewMode !== '2d') return;
