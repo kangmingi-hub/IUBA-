@@ -49,7 +49,7 @@ export default function AttackAnimation({ players }: Props) {
 
 // 수정 - 마운트 시 한 번만 구독
 useEffect(() => {
-  const shownIds = new Set<string>();  // ← 로컬 변수로
+  const shownIds = new Set<string>();
 
   const channel = supabase
     .channel('attack_results_realtime')
@@ -60,14 +60,26 @@ useEffect(() => {
     }, (payload) => {
       const newEvent = payload.new as AttackEvent;
       if (!shownIds.has(newEvent.id)) {
-        shownIds.add(newEvent.id);  // ← state 대신 로컬 변수 사용
+        shownIds.add(newEvent.id);
         setEvents(prev => [...prev, newEvent]);
-        setTimeout(() => {
+
+        // 30초 후 처리
+        setTimeout(async () => {
+          // conquered면 지도에 반영
+          if (newEvent.result === 'conquered') {
+            await supabase.from('country_occupations')
+              .update({ is_destroyed: true })
+              .eq('country_id', newEvent.country_id);
+          }
+          // 애니메이션 제거
           setEvents(prev => prev.filter(e => e.id !== newEvent.id));
-        }, 5000);
+        }, 30000);  // ← 30초
       }
     })
     .subscribe();
+
+  return () => { supabase.removeChannel(channel); };
+}, []);
 
   return () => { supabase.removeChannel(channel); };
 }, []);  // ✅ 빈 배열
