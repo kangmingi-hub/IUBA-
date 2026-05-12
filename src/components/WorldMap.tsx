@@ -57,6 +57,27 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
       .then(data => setTopology(data));
   }, []);
 
+  useEffect(() => {
+  const shownIds = new Set<string>();
+  const channel = supabase.channel('war_events_map')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'attack_results'
+    }, (payload) => {
+      const e = payload.new as any;
+      if (!shownIds.has(e.id)) {
+        shownIds.add(e.id);
+        setWarEvents(prev => [...prev, { id: e.id, country_name: e.country_name, result: e.result }]);
+        setTimeout(() => {
+          setWarEvents(prev => prev.filter(w => w.id !== e.id));
+        }, 30000);
+      }
+    })
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}, []);
+
 // ✅ 여기에 추가
 useEffect(() => {
   const fetchAttackSchedules = async () => {
