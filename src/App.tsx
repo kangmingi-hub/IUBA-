@@ -26,6 +26,7 @@ import OccupancyBar from './components/OccupancyBar';
 import MergesPanel from './components/MergesPanel';
 import AttackWarning from './components/AttackWarning';
 import DefensePanel from './components/DefensePanel';
+import AttackAnimation from './components/AttackAnimation';
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 
@@ -154,6 +155,7 @@ export default function App() {
           <AnimatePresence mode="wait">
             {activeTab === 'map' && (
               <div className="flex-1 flex flex-col gap-3" style={{ touchAction: 'none' }}>
+                <AttackAnimation players={gameState.players} />
                 <WorldMap
                   countries={gameState.countries}
                   players={gameState.players}
