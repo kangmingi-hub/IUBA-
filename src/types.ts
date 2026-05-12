@@ -17,6 +17,7 @@ export interface CountryState {
   name: string;
   ownerId: string | null;
   buildings: number;
+  isDestroyed?: boolean;
 }
 
 export interface User {
