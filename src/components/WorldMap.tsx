@@ -511,67 +511,81 @@ useEffect(() => {
     }); // ← forEach 닫히는 곳
     }
 
-    if (viewMode === '2d') {
-      warEvents.forEach((warEvent) => {
-        const mappedName = COUNTRY_NAME_MAP[warEvent.country_name] || warEvent.country_name;
-        const feature = filteredFeatures.find((f: any) =>
-          f.properties.name === mappedName || f.properties.name === warEvent.country_name
-        );
-        if (!feature) return;
+    useEffect(() => {
+  if (!topology || !svgRef.current || viewMode !== '2d') return;
 
-        const centroid = path.centroid(feature);
-        if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) return;
+  const svg = d3.select(svgRef.current);
+  const gMain = svg.select('.main-group');
+  const gPerspective = gMain.select('g'); // 첫번째 g (perspective group)
 
-        const isConquered = warEvent.result === 'conquered';
-        const particleCount = 30;
+  const width = svgRef.current.clientWidth;
+  const height = svgRef.current.clientHeight;
+  const projection = d3.geoMercator()
+    .scale(width / 6.5)
+    .translate([width / 2, height / 1.8]);
+  const path = d3.geoPath().projection(projection);
+  const features = topojson.feature(topology, topology.objects.countries) as any;
+  const filteredFeatures = features.features.filter((f: any) => f.id !== '010' && f.properties.name !== 'Antarctica');
 
-        // 파티클 터뜨리기
-        for (let i = 0; i < particleCount; i++) {
-          const angle = (Math.random() * 360 * Math.PI) / 180;
-          const distance = 10 + Math.random() * 40;
-          const size = 2 + Math.random() * 4;
-          const duration = 800 + Math.random() * 600;
-          const hue = isConquered
-            ? Math.random() * 30        // 빨강~주황
-            : 120 + Math.random() * 40; // 초록
-          const color = `hsl(${hue}, 100%, 60%)`;
+  warEvents.forEach((warEvent) => {
+    const mappedName = COUNTRY_NAME_MAP[warEvent.country_name] || warEvent.country_name;
+    const feature = filteredFeatures.find((f: any) =>
+      f.properties.name === mappedName || f.properties.name === warEvent.country_name
+    );
+    if (!feature) return;
 
-          const particle = gPerspective.append('circle')
-            .attr('cx', centroid[0])
-            .attr('cy', centroid[1])
-            .attr('r', size)
-            .attr('fill', color)
-            .attr('opacity', 1)
-            .attr('class', 'pointer-events-none');
+    const centroid = path.centroid(feature);
+    if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) return;
 
-          particle.transition()
-            .duration(duration)
-            .ease(d3.easeQuadOut)
-            .attr('cx', centroid[0] + Math.cos(angle) * distance)
-            .attr('cy', centroid[1] + Math.sin(angle) * distance)
-            .attr('opacity', 0)
-            .attr('r', 0)
-            .remove();
-        }
+    const isConquered = warEvent.result === 'conquered';
 
-        // 폭발 원형 효과
-        const blast = gPerspective.append('circle')
-          .attr('cx', centroid[0])
-          .attr('cy', centroid[1])
-          .attr('r', 5)
-          .attr('fill', 'none')
-          .attr('stroke', isConquered ? '#ef4444' : '#22c55e')
-          .attr('stroke-width', 3)
-          .attr('opacity', 1)
-          .attr('class', 'pointer-events-none');
+    // 파티클 30개
+    for (let i = 0; i < 30; i++) {
+      const angle = Math.random() * 2 * Math.PI;
+      const distance = 10 + Math.random() * 40;
+      const size = 2 + Math.random() * 4;
+      const duration = 800 + Math.random() * 600;
+      const hue = isConquered ? Math.random() * 30 : 120 + Math.random() * 40;
 
-        blast.transition()
-          .duration(600)
-          .ease(d3.easeQuadOut)
-          .attr('r', 30)
-          .attr('opacity', 0)
-          .attr('stroke-width', 0.5)
-          .remove();
+      gPerspective.append('circle')
+        .attr('cx', centroid[0])
+        .attr('cy', centroid[1])
+        .attr('r', size)
+        .attr('fill', `hsl(${hue}, 100%, 60%)`)
+        .attr('opacity', 1)
+        .attr('class', 'pointer-events-none')
+        .transition()
+        .duration(duration)
+        .ease(d3.easeQuadOut)
+        .attr('cx', centroid[0] + Math.cos(angle) * distance)
+        .attr('cy', centroid[1] + Math.sin(angle) * distance)
+        .attr('opacity', 0)
+        .attr('r', 0)
+        .remove();
+    }
+
+    // 폭발 원형
+    gPerspective.append('circle')
+      .attr('cx', centroid[0]).attr('cy', centroid[1])
+      .attr('r', 5).attr('fill', 'none')
+      .attr('stroke', isConquered ? '#ef4444' : '#22c55e')
+      .attr('stroke-width', 3).attr('opacity', 1)
+      .attr('class', 'pointer-events-none')
+      .transition().duration(600).ease(d3.easeQuadOut)
+      .attr('r', 30).attr('opacity', 0).remove();
+
+    // 이모지
+    gPerspective.append('text')
+      .attr('x', centroid[0]).attr('y', centroid[1] - 10)
+      .attr('text-anchor', 'middle').attr('font-size', 16)
+      .attr('class', 'pointer-events-none')
+      .text(isConquered ? '💥' : '🛡️')
+      .transition().duration(2000).ease(d3.easeQuadOut)
+      .attr('y', centroid[1] - 40).attr('opacity', 0).remove();
+  });
+
+}, [warEvents, topology, viewMode]);
+
 
         // 이모지 텍스트
         const emoji = gPerspective.append('text')
@@ -592,7 +606,7 @@ useEffect(() => {
     }
 
     return () => { tooltip.remove(); };
-  }, [topology, countries, players, viewMode, rotation, zoomLevel, warEvents]);
+  }, [topology, countries, players, viewMode, rotation, zoomLevel]);
 
   useEffect(() => {
     if (!topology || !svgRef.current || !zoomRef.current || viewMode !== '2d') return;
