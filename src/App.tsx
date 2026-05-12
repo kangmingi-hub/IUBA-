@@ -41,7 +41,7 @@ export default function App() {
     handleAddMember, handleDeleteMember, handleAdminSubmit,
     handleCancelOccupation, healGhostData, buyCountry, buildInCountry, resetGame,
     cancelBuilding, resetManualPoints, handleChangePassword, handleColorChange, buildDefense,
-    mergeGroups, handleAddMergeGroup, handleDeleteMergeGroup,
+    mergeGroups, handleAddMergeGroup, handleDeleteMergeGroup, restoreCountry,
   } = useGameState();
 
   const [selectedCountry, setSelectedCountry] = useState<{ id: string; name: string } | null>(null);
