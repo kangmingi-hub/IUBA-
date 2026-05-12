@@ -3,6 +3,9 @@ import { motion } from 'motion/react';
 import { Swords, Shield, Clock, Zap, Trash2, RotateCcw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
+const DEFENSE_BUILDING_COST = 50;
+const DEFENSE_POWER_PER_BUILDING = 10;
+
 interface AttackSchedule {
   id: string;
   attack_time: string;
@@ -17,11 +20,11 @@ interface Props {
   countries: Record<string, { id: string; name: string; ownerId: string; buildings: number }>;
 }
 
-export default function AttackAdminPanel({ players, countries }: Props) {
 
-export default function AttackAdminPanel({ players }: Props) {
+export default function AttackAdminPanel({ players, countries }: Props) {
   const [schedules, setSchedules] = useState<AttackSchedule[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [defenses, setDefenses] = useState<{ country_id: string; defense_buildings: number; defense_power: number }[]>([]);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -37,6 +40,10 @@ export default function AttackAdminPanel({ players }: Props) {
     if (data) setSchedules(data);
   };
 
+  const fetchDefenses = async () => {
+  const { data } = await supabase.from('country_defenses').select('*');
+  if (data) setDefenses(data);
+};
   useEffect(() => {
     fetchSchedules();
     const channel = supabase
