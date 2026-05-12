@@ -561,25 +561,26 @@ useEffect(() => {
   await fetchClubPoints();
 };
 
-  const restoreCountry = async (countryId: string) => {
+// useGameState.ts
+const restoreCountry = async (countryId: string, isAdmin?: boolean) => {
   const country = gameState.countries[countryId];
   if (!country?.ownerId) return;
   const player = gameState.players.find(p => p.id === country.ownerId);
   const RESTORE_COST = 30;
-  if (!player || player.gold < RESTORE_COST) {
-    alert('미네랄이 부족합니다! (복구 비용: 30 MINERAL)');
-    return;
+
+  if (!isAdmin) {
+    if (!player || player.gold < RESTORE_COST) {
+      alert('미네랄이 부족합니다! (복구 비용: 30 MINERAL)');
+      return;
+    }
+    await supabase.from('country_purchases').insert({
+      club_name: player.name,
+      country_name: country.name,
+      price_paid: RESTORE_COST,
+      purchased_at: new Date().toISOString()
+    });
   }
 
-  // 30 MINERAL 차감 (country_purchases에 기록)
-  await supabase.from('country_purchases').insert({
-    club_name: player.name,
-    country_name: country.name,
-    price_paid: RESTORE_COST,
-    purchased_at: new Date().toISOString()
-  });
-
-  // is_destroyed를 false로 복구
   await supabase.from('country_occupations')
     .update({ is_destroyed: false })
     .eq('country_id', countryId);
@@ -592,8 +593,8 @@ useEffect(() => {
     }
   }));
 
-  addLog(`${player.name}님이 ${country.name}을 30 MINERAL로 복구했습니다!`, 'construction');
-  await fetchClubPoints();
+  addLog(`${isAdmin ? '[어드민] ' : ''}${player?.name}님의 ${country.name} 복구 완료!`, 'construction');
+  if (!isAdmin) await fetchClubPoints();
 };
 
   const resetManualPoints = async () => {
