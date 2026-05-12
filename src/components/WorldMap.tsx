@@ -43,8 +43,8 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
   const [isRotating, setIsRotating] = useState(true);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>(null);
   const isDraggingRef = useRef(false);
-  const [attackingCountries, setAttackingCountries] = useState<Set<string>>(new Set());
-  const [warCountries, setWarCountries] = useState<Set<string>>(new Set());
+  const attackingCountriesRef = useRef<Set<string>>(new Set());
+  const warCountriesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
@@ -71,8 +71,8 @@ useEffect(() => {
       }
     });
 
-    setAttackingCountries(warning);
-    setWarCountries(war);
+    attackingCountriesRef.current = warning;
+    warCountriesRef.current = war;
   };
 
   fetchAttackSchedules();
@@ -311,7 +311,8 @@ useEffect(() => {
             d3.select(this).attr('fill-opacity', 1).attr('stroke', '#94a3b8').attr('stroke-width', '0.5').attr('vector-effect', 'non-scaling-stroke');
           });
 
-        if (attackingCountries.has(countryName)) {
+        if (attackingCountriesRef.current.has(countryName)) {
+        if (warCountriesRef.current.has(countryName)) {
   countryG.append('path').datum(feature).attr('d', path as any)
     .attr('fill', 'none')
     .attr('stroke', '#ef4444')
@@ -486,7 +487,7 @@ if (warCountries.has(countryName)) {
     }
 
     return () => { tooltip.remove(); };
-  }, [topology, countries, players, viewMode, rotation, zoomLevel, attackingCountries, warCountries]);
+  }, [topology, countries, players, viewMode, rotation, zoomLevel]);
 
   useEffect(() => {
     if (!topology || !svgRef.current || !zoomRef.current || viewMode !== '2d') return;
