@@ -24,6 +24,7 @@ import { twMerge } from 'tailwind-merge';
 import BackgroundMusic from './components/BackgroundMusic';
 import OccupancyBar from './components/OccupancyBar';
 import MergesPanel from './components/MergesPanel';
+import AttackWarning from './components/AttackWarning';
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 
@@ -129,6 +130,8 @@ export default function App() {
         </div>
       </header>
 
+<AttackWarning players={gameState.players} />
+      
       <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-10 gap-4">
       <section className="lg:col-span-3 space-y-6">
           <Leaderboard
