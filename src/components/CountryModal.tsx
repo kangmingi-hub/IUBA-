@@ -16,10 +16,11 @@ interface Props {
   currentUser: User | null;
   onClose: () => void;
   onBuy: (countryId: string, playerId: string, countryName: string) => void;
-  onBuild: (countryId: string) => void;
+onBuild: (countryId: string) => void;
+  onBuildDefense: (countryId: string) => void;
 }
 
-export default function CountryModal({ selectedCountry, countries, players, currentUser, onClose, onBuy, onBuild }: Props) {
+export default function CountryModal({ selectedCountry, countries, players, currentUser, onClose, onBuy, onBuild, onBuildDefense }: Props) {
   if (!selectedCountry) return null;
 
   const ownedCountry = countries[selectedCountry.id] || countries[selectedCountry.name];
@@ -144,7 +145,19 @@ const myPlayer = players.find(p => p.name === resolvedName);
                     </div>
                   </div>
 
-                  {canBuild ? (
+                 {canBuild && (
+                    <button
+                      onClick={() => onBuildDefense(selectedCountry.id)}
+                      className="w-full py-4 rounded-2xl font-black text-white flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(16,185,129,0.8), rgba(5,150,105,0.8))',
+                        border: '1px solid rgba(16,185,129,0.5)',
+                        boxShadow: '0 4px 20px rgba(16,185,129,0.3)',
+                      }}
+                    >
+                      🛡️ 방어 건물 건설 (50 MINERAL)
+                    </button>
+                  )}
                     <button
                       onClick={() => onBuild(selectedCountry.id)}
                       disabled={ownedCountry.buildings >= 3}
