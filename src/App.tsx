@@ -25,6 +25,7 @@ import BackgroundMusic from './components/BackgroundMusic';
 import OccupancyBar from './components/OccupancyBar';
 import MergesPanel from './components/MergesPanel';
 import AttackWarning from './components/AttackWarning';
+import DefensePanel from './components/DefensePanel';
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 
@@ -143,6 +144,9 @@ export default function App() {
             onReset={resetGame}
             onResetManual={resetManualPoints}
             currentUser={currentUser}
+            <DefensePanel  // ← 여기 추가
+    players={gameState.players}
+    countries={gameState.countries}
           />
         </section>
 
