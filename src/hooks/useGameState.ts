@@ -474,8 +474,48 @@ useEffect(() => {
     const nextTier = tiers[country.buildings];
     const player = gameState.players.find(p => p.id === country.ownerId);
     if (!player || player.buildingPower < nextTier.cost) return;
+    
+    const newBuildings = country.buildings + 1;
 
-const buildDefense = async (countryId: string) => {
+    await supabase.from('country_occupations')
+      .update({ buildings: newBuildings })
+      .eq('country_id', countryId);
+
+    // ✅ 추가: building_purchases에 기록 → 다른 기기 포인트 차감 동기화
+    await supabase.from('building_purchases').insert({
+      club_name: player.name,
+      building_name: nextTier.name,
+      price_paid: nextTier.cost,
+      purchased_at: new Date().toISOString()
+    });
+
+    setGameState(prev => ({
+      ...prev,
+      players: prev.players.map(p => p.id === player.id ? { ...p, buildingPower: p.buildingPower - nextTier.cost } : p),
+      countries: { ...prev.countries, [countryId]: { ...country, buildings: newBuildings } }
+    }));
+    addLog(`${player.name}님이 ${country.name}에 '${nextTier.name}'(을)를 건축했습니다!`, 'construction');
+  };
+
+  // ✅ 수정: purchases 테이블도 같이 초기화 → 다른 기기 동기화
+  const resetGame = async () => {
+    if (window.confirm('정말 모든 데이터를 초기화하시겠습니까? (멤버는 유지됩니다)')) {
+      await supabase.from('country_occupations').delete().neq('country_id', '');
+      await supabase.from('country_purchases').delete().neq('id', 0);
+      await supabase.from('building_purchases').delete().neq('id', 0);
+
+      setGameState(prev => ({
+        ...prev,
+        players: prev.players.map(p => ({ ...p, gold: 0, buildingPower: 0 })),
+        countries: {},
+        logs: [{ id: 'reset', timestamp: Date.now(), message: '게임 데이터가 초기화되었습니다.', type: 'purchase' as any }]
+      }));
+
+      await fetchClubPoints(startDate);
+    }
+  };
+
+  const buildDefense = async (countryId: string) => {
   const country = gameState.countries[countryId];
   if (!country?.ownerId) return;
   const player = gameState.players.find(p => p.id === country.ownerId);
@@ -517,46 +557,6 @@ const buildDefense = async (countryId: string) => {
   addLog(`${player.name}님이 ${country.name}에 방어 건물을 건설했습니다! (50 MINERAL)`, 'construction');
   await fetchClubPoints();
 };
-    
-    const newBuildings = country.buildings + 1;
-
-    await supabase.from('country_occupations')
-      .update({ buildings: newBuildings })
-      .eq('country_id', countryId);
-
-    // ✅ 추가: building_purchases에 기록 → 다른 기기 포인트 차감 동기화
-    await supabase.from('building_purchases').insert({
-      club_name: player.name,
-      building_name: nextTier.name,
-      price_paid: nextTier.cost,
-      purchased_at: new Date().toISOString()
-    });
-
-    setGameState(prev => ({
-      ...prev,
-      players: prev.players.map(p => p.id === player.id ? { ...p, buildingPower: p.buildingPower - nextTier.cost } : p),
-      countries: { ...prev.countries, [countryId]: { ...country, buildings: newBuildings } }
-    }));
-    addLog(`${player.name}님이 ${country.name}에 '${nextTier.name}'(을)를 건축했습니다!`, 'construction');
-  };
-
-  // ✅ 수정: purchases 테이블도 같이 초기화 → 다른 기기 동기화
-  const resetGame = async () => {
-    if (window.confirm('정말 모든 데이터를 초기화하시겠습니까? (멤버는 유지됩니다)')) {
-      await supabase.from('country_occupations').delete().neq('country_id', '');
-      await supabase.from('country_purchases').delete().neq('id', 0);
-      await supabase.from('building_purchases').delete().neq('id', 0);
-
-      setGameState(prev => ({
-        ...prev,
-        players: prev.players.map(p => ({ ...p, gold: 0, buildingPower: 0 })),
-        countries: {},
-        logs: [{ id: 'reset', timestamp: Date.now(), message: '게임 데이터가 초기화되었습니다.', type: 'purchase' as any }]
-      }));
-
-      await fetchClubPoints(startDate);
-    }
-  };
 
   const resetManualPoints = async () => {
     if (window.confirm('관리자가 수동으로 추가한 점수를 초기화하고 원본 점수로 되돌리시겠습니까?')) {
