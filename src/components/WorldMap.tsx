@@ -14,6 +14,7 @@ interface WorldMapProps {
   countries: Record<string, CountryState>;
   players: Player[];
   onCountryClick: (countryId: string, countryName: string) => void;
+  defenses?: Record<string, { defense_buildings: number; defense_power: number }>;
 }
 
 type ViewMode = '3d' | '2d';
@@ -29,7 +30,7 @@ const CONTINENTS: Record<Continent, { name: string; center: [number, number]; sc
   oceania:      { name: '오세아니아', center: [148, -27], scale: 4.5 },
 };
 
-export default function WorldMap({ countries, players, onCountryClick }: WorldMapProps) {
+export default function WorldMap({ countries, players, onCountryClick, defenses = {} }: WorldMapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [topology, setTopology] = useState<any>(null);
@@ -360,6 +361,38 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
           .attr('x', charX - finalCharSize / 2).attr('y', charY - finalCharSize / 2)
           .attr('width', finalCharSize).attr('height', finalCharSize)
           .attr('class', 'pointer-events-none');
+
+        // 방어 건물 이미지 추가
+        const defenseInfo = defenses[state.id] || defenses[state.name];
+        if (defenseInfo && defenseInfo.defense_buildings > 0) {
+          const defSize = imageSize * 0.6;
+          gPerspective.append('image')
+            .attr('href', 'https://cdn-icons-png.flaticon.com/512/1528/1528674.png')
+            .attr('x', centroid[0] - imageSize * 0.5 - defSize / 2)
+            .attr('y', centroid[1] - imageSize * 0.3 - defSize / 2 - targetDepth)
+            .attr('width', defSize).attr('height', defSize)
+            .attr('class', 'pointer-events-none')
+            .attr('opacity', 0.85)
+            .attr('style', 'filter: hue-rotate(120deg)');
+
+          // 방어 건물 수 뱃지
+          gPerspective.append('circle')
+            .attr('cx', centroid[0] - imageSize * 0.5 + defSize * 0.3)
+            .attr('cy', centroid[1] - imageSize * 0.3 - defSize * 0.3 - targetDepth)
+            .attr('r', defSize * 0.28)
+            .attr('fill', '#10b981')
+            .attr('class', 'pointer-events-none');
+          gPerspective.append('text')
+            .attr('x', centroid[0] - imageSize * 0.5 + defSize * 0.3)
+            .attr('y', centroid[1] - imageSize * 0.3 - defSize * 0.3 - targetDepth + defSize * 0.1)
+            .attr('text-anchor', 'middle')
+            .attr('dominant-baseline', 'middle')
+            .attr('fill', 'white')
+            .attr('font-size', defSize * 0.28)
+            .attr('font-weight', '900')
+            .attr('class', 'pointer-events-none')
+            .text(defenseInfo.defense_buildings);
+        }
       });
     }
 
