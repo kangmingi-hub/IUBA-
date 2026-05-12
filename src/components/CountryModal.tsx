@@ -23,7 +23,7 @@ interface Props {
   onRestore: (countryId: string) => void;
 }
 
-export default function CountryModal({ selectedCountry, countries, players, currentUser, onClose, onBuy, onBuild, onBuildDefense }: Props) {
+export default function CountryModal({ selectedCountry, countries, players, currentUser, onClose, onBuy, onBuild, onBuildDefense, onRestore }: Props) {
   if (!selectedCountry) return null;
   const [defenseData, setDefenseData] = useState<{ defense_buildings: number; defense_power: number } | null>(null);
 
