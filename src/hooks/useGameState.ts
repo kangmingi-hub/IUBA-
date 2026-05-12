@@ -560,6 +560,41 @@ useEffect(() => {
   await fetchClubPoints();
 };
 
+  const restoreCountry = async (countryId: string) => {
+  const country = gameState.countries[countryId];
+  if (!country?.ownerId) return;
+  const player = gameState.players.find(p => p.id === country.ownerId);
+  const RESTORE_COST = 30;
+  if (!player || player.gold < RESTORE_COST) {
+    alert('미네랄이 부족합니다! (복구 비용: 30 MINERAL)');
+    return;
+  }
+
+  // 30 MINERAL 차감 (country_purchases에 기록)
+  await supabase.from('country_purchases').insert({
+    club_name: player.name,
+    country_name: country.name,
+    price_paid: RESTORE_COST,
+    purchased_at: new Date().toISOString()
+  });
+
+  // is_destroyed를 false로 복구
+  await supabase.from('country_occupations')
+    .update({ is_destroyed: false })
+    .eq('country_id', countryId);
+
+  setGameState(prev => ({
+    ...prev,
+    countries: {
+      ...prev.countries,
+      [countryId]: { ...country, isDestroyed: false }
+    }
+  }));
+
+  addLog(`${player.name}님이 ${country.name}을 30 MINERAL로 복구했습니다!`, 'construction');
+  await fetchClubPoints();
+};
+
   const resetManualPoints = async () => {
     if (window.confirm('관리자가 수동으로 추가한 점수를 초기화하고 원본 점수로 되돌리시겠습니까?')) {
       await fetchClubPoints();
@@ -610,6 +645,6 @@ const handleDeleteMergeGroup = async (id: string) => {
     handleAddMember, handleDeleteMember, handleAdminSubmit,
     handleCancelOccupation, healGhostData, buyCountry, buildInCountry, resetGame,
     cancelBuilding, resetManualPoints, handleColorChange, handleChangePassword, buildDefense,
-    mergeGroups, handleAddMergeGroup, handleDeleteMergeGroup,
+    mergeGroups, handleAddMergeGroup, handleDeleteMergeGroup, restoreCountry,
   };
 }
