@@ -26,7 +26,6 @@ import OccupancyBar from './components/OccupancyBar';
 import MergesPanel from './components/MergesPanel';
 import AttackWarning from './components/AttackWarning';
 import DefensePanel from './components/DefensePanel';
-import AttackAnimation from './components/AttackAnimation';
 import AttackAdminPanel from './components/AttackAdminPanel';
 import { useEffect, useState } from 'react';  // useEffect 이미 있으면 패스
 import { supabase } from './lib/supabase';
@@ -70,7 +69,6 @@ const occupiedCountries = Object.values(gameState.countries as Record<string, Co
   return (
     <div className="min-h-screen text-white font-sans p-4 md:p-8" style={{ position: 'relative' }}>
       <HologramBackground /> 
-      <AttackAnimation players={gameState.players} />
       <header className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-center gap-4 p-6 rounded-2xl"
   style={{
     background: 'rgba(255,255,255,0.38)',
