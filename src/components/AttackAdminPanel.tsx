@@ -81,7 +81,7 @@ const triggerAttack = async () => {
     await supabase.from('attack_schedules').insert(inserts);
 
     const summary = targets.map((c, i) => `${c.name} (공격력: ${inserts[i].attack_power})`).join('\n');
-    alert(`⚔️ 공격 예약 완료! ${scheduledMinutes}분 후\n\n${summary}`);
+    alert(`⚔️ 공격 예약 완료! ${new Date(scheduledTime).toLocaleString('ko-KR')}\n\n${summary}`);
     fetchSchedules();
   } catch (err) {
     alert('오류: ' + err);
@@ -214,6 +214,25 @@ const triggerImmediateAttack = async () => {
           <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3">
             새 공격 예약
           </p>
+
+          <div className="flex flex-col gap-2 mb-3">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              공격 시간 지정
+            </p>
+            <input
+              type="datetime-local"
+              value={scheduledTime}
+              onChange={(e) => setScheduledTime(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl font-bold text-sm"
+              style={{
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: 'white',
+                colorScheme: 'dark',
+              }}
+            />
+          </div>
+          
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
