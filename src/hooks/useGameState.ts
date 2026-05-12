@@ -199,6 +199,7 @@ useEffect(() => {
     const channel = supabase
       .channel('realtime_sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'country_occupations' }, () => { fetchOccupations(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attack_results' }, () => { fetchOccupations(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => { fetchUsers(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, (payload: any) => {
         if (payload.new?.key === 'start_date') setStartDate(payload.new.value);
