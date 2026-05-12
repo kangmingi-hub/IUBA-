@@ -45,7 +45,6 @@ function Particle({ x, y, color }: { x: number; y: number; color: string }) {
 
 export default function AttackAnimation({ players }: Props) {
   const [events, setEvents] = useState<AttackEvent[]>([]);
-  const [shown, setShown] = useState<Set<string>>(new Set());
 
 // 수정 - 마운트 시 한 번만 구독
 useEffect(() => {
@@ -80,9 +79,6 @@ useEffect(() => {
 
   return () => { supabase.removeChannel(channel); };
 }, []);
-
-  return () => { supabase.removeChannel(channel); };
-}, []);  // ✅ 빈 배열
 
   const getOwnerName = (ownerId: string) => players.find(p => p.id === ownerId)?.name || '알 수 없음';
   const getOwnerColor = (ownerId: string) => players.find(p => p.id === ownerId)?.color || '#666';
