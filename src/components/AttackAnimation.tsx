@@ -95,9 +95,14 @@ useEffect(() => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           style={{
-            position: 'absolute',
+            position: 'fixed',
             inset: 0,
-            zIndex: 50,
+            zIndex: 9999,
+            pointerEvents: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
             pointerEvents: 'none',
             display: 'flex',
             alignItems: 'center',
