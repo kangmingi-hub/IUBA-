@@ -255,11 +255,10 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
 
         countryG.append('path').datum(feature).attr('d', path as any)
           .attr('class', 'country-top cursor-pointer')
-          .attr('fill', () => {
-              if (!isOwned) return '#e2e8f0';
-              if (state?.isDestroyed) return '#94a3b8'; // 회색 - 점령당한 상태
-              return players.find(p => p.id === state!.ownerId)?.color || '#e2e8f0';
-            })
+         .attr('fill', () => {
+            if (!isOwned) return '#e2e8f0';
+            return players.find(p => p.id === state!.ownerId)?.color || '#e2e8f0';
+          })
           .attr('stroke', '#94a3b8').attr('stroke-width', '0.5').attr('vector-effect', 'non-scaling-stroke')
           .on('click', (event, d: any) => onCountryClick(d.properties.name, d.properties.name))
           .on('mouseover', function(event, d: any) {
@@ -271,6 +270,13 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
             handleMouseOut();
             d3.select(this).attr('fill-opacity', 1).attr('stroke', '#94a3b8').attr('stroke-width', '0.5').attr('vector-effect', 'non-scaling-stroke');
           });
+
+        // isDestroyed 오버레이
+        if (state?.isDestroyed) {
+          countryG.append('path').datum(feature).attr('d', path as any)
+            .attr('fill', 'rgba(0, 0, 0, 0.55)')
+            .attr('class', 'pointer-events-none');
+        }
 
         if (isOwned) {
           countryG.attr('opacity', 0).attr('transform', 'translate(0, 0)')
@@ -288,7 +294,6 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
         .attr('fill', (d: any) => {
             const state = countries[d.properties.name];
             if (!state?.ownerId) return '#CBD5E1';
-            if (state.isDestroyed) return '#94a3b8'; // 회색 - 점령당한 상태
             return players.find(p => p.id === state.ownerId)?.color || '#CBD5E1';
           })
         .on('click', (event, d: any) => onCountryClick(d.properties.name, d.properties.name))
@@ -301,7 +306,17 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
           handleMouseOut();
           d3.select(this).attr('fill-opacity', 1).attr('stroke', '#94a3b8').attr('stroke-width', '0.5').attr('vector-effect', 'non-scaling-stroke');
         });
+       gCountries.selectAll('.destroyed-overlay')
+        .data(filteredFeatures.filter((f: any) => {
+          const state = countries[f.properties.name];
+          return state?.isDestroyed;
+        }))
+        .enter().append('path')
+        .attr('d', path as any)
+        .attr('fill', 'rgba(0, 0, 0, 0.55)')
+        .attr('class', 'pointer-events-none');
     }
+    
 
     if (viewMode === '2d') {
       Object.values(countries).forEach((state) => {
