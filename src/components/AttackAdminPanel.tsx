@@ -101,24 +101,29 @@ export default function AttackAdminPanel({ players, countries }: Props) {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  const triggerImmediateAttack = async () => {
+const triggerImmediateAttack = async () => {
   setIsLoading(true);
   try {
     const occupiedList = Object.values(countries);
     if (occupiedList.length === 0) { alert('점령된 나라가 없습니다!'); return; }
-    const randomCountry = occupiedList[Math.floor(Math.random() * occupiedList.length)];
-    const attackPower = Math.floor(Math.random() * 61) + 20;
-    const attackTime = new Date(Date.now() - 1000).toISOString(); // 즉시 실행
 
-    await supabase.from('attack_schedules').insert({
-      attack_time: attackTime,
-      attack_power: attackPower,
-      target_country_id: randomCountry.id,
-      target_country_name: randomCountry.name,
-      target_owner_id: randomCountry.ownerId,
+    // 랜덤으로 최대 5개 선택
+    const shuffled = [...occupiedList].sort(() => Math.random() - 0.5);
+    const targets = shuffled.slice(0, Math.min(5, shuffled.length));
+
+    const inserts = targets.map(country => ({
+      attack_time: new Date(Date.now() - 1000).toISOString(),
+      attack_power: Math.floor(Math.random() * 61) + 20,
+      target_country_id: country.id,
+      target_country_name: country.name,
+      target_owner_id: country.ownerId,
       status: 'scheduled'
-    });
-    alert(`⚔️ 즉시 공격 발동!\n대상: ${randomCountry.name}\n공격력: ${attackPower}`);
+    }));
+
+    await supabase.from('attack_schedules').insert(inserts);
+
+    const summary = targets.map((c, i) => `${c.name} (공격력: ${inserts[i].attack_power})`).join('\n');
+    alert(`⚔️ 즉시 공격 발동! ${targets.length}개 나라\n\n${summary}`);
   } catch (err) {
     alert('오류: ' + err);
   } finally {
