@@ -45,6 +45,7 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
   const isDraggingRef = useRef(false);
   const attackingCountriesRef = useRef<Set<string>>(new Set());
   const warCountriesRef = useRef<Set<string>>(new Set());
+  const activeWarIntervalsRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
   const [warEvents, setWarEvents] = useState<{
     id: string;
     country_name: string;
@@ -511,13 +512,13 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
   }, [topology, countries, players, viewMode, rotation, zoomLevel]);
 
   // ─── warEvents 파티클 애니메이션 (별도 useEffect) ────────────────────────
+// warEvents useEffect를 이렇게 교체
 useEffect(() => {
   if (!topology || !svgRef.current || viewMode !== '2d') return;
 
   const svg = d3.select(svgRef.current);
   const gMain = svg.select('.main-group');
   const gPerspective = gMain.select('g');
-
   const width = svgRef.current.clientWidth;
   const height = svgRef.current.clientHeight;
   const projection = d3.geoMercator()
@@ -525,11 +526,14 @@ useEffect(() => {
     .translate([width / 2, height / 1.8]);
   const path = d3.geoPath().projection(projection);
   const features = topojson.feature(topology, topology.objects.countries) as any;
-  const filteredFeatures = features.features.filter((f: any) => f.id !== '010' && f.properties.name !== 'Antarctica');
+  const filteredFeatures = features.features.filter(
+    (f: any) => f.id !== '010' && f.properties.name !== 'Antarctica'
+  );
 
-  const intervals: ReturnType<typeof setInterval>[] = [];
-
+  // 새로 추가된 이벤트만 처리 (이미 interval 돌고 있는 건 건드리지 않음)
   warEvents.forEach((warEvent) => {
+    if (activeWarIntervalsRef.current.has(warEvent.id)) return; // 이미 실행 중이면 스킵
+
     const mappedName = COUNTRY_NAME_MAP[warEvent.country_name] || warEvent.country_name;
     const feature = filteredFeatures.find((f: any) =>
       f.properties.name === mappedName || f.properties.name === warEvent.country_name
@@ -541,34 +545,24 @@ useEffect(() => {
 
     const isConquered = warEvent.result === 'conquered';
 
-    // 파티클 한 번 터뜨리는 함수
     const burst = () => {
-      // 파티클 30개
       for (let i = 0; i < 30; i++) {
         const angle = Math.random() * 2 * Math.PI;
         const distance = 10 + Math.random() * 40;
         const size = 2 + Math.random() * 4;
         const duration = 800 + Math.random() * 600;
         const hue = isConquered ? Math.random() * 30 : 120 + Math.random() * 40;
-
         gPerspective.append('circle')
-          .attr('cx', centroid[0])
-          .attr('cy', centroid[1])
+          .attr('cx', centroid[0]).attr('cy', centroid[1])
           .attr('r', size)
           .attr('fill', `hsl(${hue}, 100%, 60%)`)
           .attr('opacity', 1)
           .attr('class', 'pointer-events-none')
-          .transition()
-          .duration(duration)
-          .ease(d3.easeQuadOut)
+          .transition().duration(duration).ease(d3.easeQuadOut)
           .attr('cx', centroid[0] + Math.cos(angle) * distance)
           .attr('cy', centroid[1] + Math.sin(angle) * distance)
-          .attr('opacity', 0)
-          .attr('r', 0)
-          .remove();
+          .attr('opacity', 0).attr('r', 0).remove();
       }
-
-      // 폭발 원형
       gPerspective.append('circle')
         .attr('cx', centroid[0]).attr('cy', centroid[1])
         .attr('r', 5).attr('fill', 'none')
@@ -577,8 +571,6 @@ useEffect(() => {
         .attr('class', 'pointer-events-none')
         .transition().duration(600).ease(d3.easeQuadOut)
         .attr('r', 30).attr('opacity', 0).remove();
-
-      // 이모지
       gPerspective.append('text')
         .attr('x', centroid[0]).attr('y', centroid[1] - 10)
         .attr('text-anchor', 'middle').attr('font-size', 16)
@@ -588,16 +580,16 @@ useEffect(() => {
         .attr('y', centroid[1] - 40).attr('opacity', 0).remove();
     };
 
-    // 즉시 한 번 터뜨리고, 2초마다 반복, 30초 후 정지
     burst();
-    const id = setInterval(burst, 2000);
-    intervals.push(id);
-    setTimeout(() => clearInterval(id), 30000);
+    const intervalId = setInterval(burst, 2000);
+    activeWarIntervalsRef.current.set(warEvent.id, intervalId);
+
+    setTimeout(() => {
+      clearInterval(intervalId);
+      activeWarIntervalsRef.current.delete(warEvent.id);
+    }, 30000);
   });
 
-  return () => {
-    intervals.forEach(clearInterval);
-  };
 }, [warEvents, topology, viewMode]);
 
   useEffect(() => {
