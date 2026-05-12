@@ -52,12 +52,6 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
       .then(data => setTopology(data));
   }, []);
 
-  useEffect(() => {
-  fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
-    .then(res => res.json())
-    .then(data => setTopology(data));
-}, []);
-
 // ✅ 여기에 추가
 useEffect(() => {
   const fetchAttackSchedules = async () => {
@@ -492,7 +486,7 @@ if (warCountries.has(countryName)) {
     }
 
     return () => { tooltip.remove(); };
-  }, [topology, countries, players, viewMode, rotation, zoomLevel]);
+  }, [topology, countries, players, viewMode, rotation, zoomLevel, attackingCountries, warCountries]);
 
   useEffect(() => {
     if (!topology || !svgRef.current || !zoomRef.current || viewMode !== '2d') return;
