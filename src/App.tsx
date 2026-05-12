@@ -28,6 +28,8 @@ import AttackWarning from './components/AttackWarning';
 import DefensePanel from './components/DefensePanel';
 import AttackAnimation from './components/AttackAnimation';
 import AttackAdminPanel from './components/AttackAdminPanel';
+import { useEffect, useState } from 'react';  // useEffect 이미 있으면 패스
+import { supabase } from './lib/supabase';
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 
@@ -45,7 +47,28 @@ export default function App() {
   const [selectedCountry, setSelectedCountry] = useState<{ id: string; name: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'map' | 'admin' | 'logs' | 'members' | 'territories'>('map');
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [defenses, setDefenses] = useState<Record<string, { defense_buildings: number; defense_power: number }>>({});
 
+const [defenses, setDefenses] = useState<Record<string, { defense_buildings: number; defense_power: number }>>({});
+
+useEffect(() => {
+  const fetchDefenses = async () => {
+    const { data } = await supabase.from('country_defenses').select('*');
+    if (data) {
+      const map: Record<string, { defense_buildings: number; defense_power: number }> = {};
+      data.forEach((d: any) => { map[d.country_id] = d; map[d.country_name] = d; });
+      setDefenses(map);
+    }
+  };
+  fetchDefenses();
+  const channel = supabase.channel('defenses_map')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'country_defenses' }, fetchDefenses)
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}, []);
+
+const occupiedCountries = Object.values(gameState.countries as Record<string, CountryState>).filter(c => c.ownerId)
+  
   const occupiedCountries = Object.values(gameState.countries as Record<string, CountryState>).filter(c => c.ownerId);
 
   return (
