@@ -145,7 +145,7 @@ const myPlayer = players.find(p => p.name === resolvedName);
                     </div>
                   </div>
 
-                 {canBuild && (
+              {canBuild && (
                     <button
                       onClick={() => onBuildDefense(selectedCountry.id)}
                       className="w-full py-4 rounded-2xl font-black text-white flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
@@ -158,6 +158,7 @@ const myPlayer = players.find(p => p.name === resolvedName);
                       🛡️ 방어 건물 건설 (50 MINERAL)
                     </button>
                   )}
+                  {canBuild ? (
                     <button
                       onClick={() => onBuild(selectedCountry.id)}
                       disabled={ownedCountry.buildings >= 3}
@@ -171,7 +172,7 @@ const myPlayer = players.find(p => p.name === resolvedName);
                       <Lock className="w-5 h-5" />
                       <span className="text-[11px] font-black uppercase tracking-widest">본인 동아리 영토만 건설 가능합니다</span>
                     </div>
-                  )}
+                  )}  
                 </div>
               ) : (
                 <div className="space-y-6">
