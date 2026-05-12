@@ -243,7 +243,7 @@ const occupiedCountries = Object.values(gameState.countries as Record<string, Co
         onBuy={buyCountry}
         onBuild={buildInCountry}
         onBuildDefense={buildDefense}
-        onRestore={restoreCountry}
+        onRestore={(countryId) => restoreCountry(countryId, currentUser?.role === 'admin')}
         currentUser={currentUser}
       />
 
