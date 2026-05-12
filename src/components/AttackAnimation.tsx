@@ -103,8 +103,6 @@ useEffect(() => {
             alignItems: 'center',
             justifyContent: 'center',
           }}
-            justifyContent: 'center',
-          }}
         >
           {/* 배경 플래시 */}
           <motion.div
