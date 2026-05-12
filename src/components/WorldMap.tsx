@@ -159,6 +159,90 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
     };
   }, [viewMode, zoomLevel]);
 
+// ─── 비행 유닛(전투기, 마귀 등) 애니메이션 ────────────────────────
+  useEffect(() => {
+    // 2D 모드에서만 우선 적용 (3D 뷰의 경우 곡면 궤적 계산이 추가로 필요합니다)
+    if (!topology || !svgRef.current || viewMode !== '2d') return;
+
+    const svg = d3.select(svgRef.current);
+    const gMain = svg.select('.main-group');
+    const gPerspective = gMain.select('g');
+    const width = svgRef.current.clientWidth;
+    const height = svgRef.current.clientHeight;
+    
+    const projection = d3.geoMercator()
+      .scale(width / 6.5)
+      .translate([width / 2, height / 1.8]);
+    const path = d3.geoPath().projection(projection);
+
+    const features = topojson.feature(topology, topology.objects.countries) as any;
+    const filteredFeatures = features.features.filter(
+      (f: any) => f.id !== '010' && f.properties.name !== 'Antarctica'
+    );
+
+    // 비행 유닛 생성 함수
+    const spawnFlyingUnit = () => {
+      // 1. 공격받고 있는 국가들(warCountries) 중 하나를 무작위로 타겟팅
+      const targets = Array.from(warCountriesRef.current);
+      if (targets.length === 0) return; // 타겟이 없으면 생성 안 함
+
+      const targetName = targets[Math.floor(Math.random() * targets.length)];
+      const targetFeature = filteredFeatures.find(
+        (f: any) => f.properties.name === targetName || f.properties.name === COUNTRY_NAME_MAP[targetName]
+      );
+
+      if (!targetFeature) return;
+
+      const targetCentroid = path.centroid(targetFeature);
+      if (!targetCentroid || isNaN(targetCentroid[0])) return;
+
+      // 2. 출발지 설정 (화면 밖 랜덤한 위치에서 날아오도록 설정)
+      const startAngle = Math.random() * Math.PI * 2;
+      const spawnRadius = Math.max(width, height) * 0.8; 
+      const startX = width / 2 + Math.cos(startAngle) * spawnRadius;
+      const startY = height / 2 + Math.sin(startAngle) * spawnRadius;
+
+      // 3. 비행 유닛이 타겟을 바라보도록 각도 계산 (Rotation)
+      const dx = targetCentroid[0] - startX;
+      const dy = targetCentroid[1] - startY;
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90; // +90은 이모지/이미지의 기본 방향에 따라 조절
+
+      // 4. 비행 유닛 종류 선택 (전투기 or 마귀)
+      const unitIcon = Math.random() > 0.5 ? '✈️' : '👿';
+      const duration = 2000 + Math.random() * 1500; // 2~3.5초에 걸쳐 날아감
+
+      // 5. D3 엘리먼트 추가 및 트랜지션(애니메이션) 실행
+      const unit = gPerspective.append('text')
+        .attr('x', startX)
+        .attr('y', startY)
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'middle')
+        .attr('font-size', '24px')
+        .attr('class', 'pointer-events-none drop-shadow-md') // 클릭 방지 및 그림자
+        .attr('transform', `rotate(${angle}, ${startX}, ${startY})`) // 타겟을 향해 회전
+        .text(unitIcon);
+
+      // 날아가는 애니메이션
+      unit.transition()
+        .duration(duration)
+        .ease(d3.easeCubicIn) // 처음엔 느리다가 타겟에 가까워질수록 빨라짐
+        .attr('x', targetCentroid[0])
+        .attr('y', targetCentroid[1])
+        .attr('transform', `rotate(${angle}, ${targetCentroid[0]}, ${targetCentroid[1]})`)
+        .on('end', function() {
+          // 타겟에 도달하면 엘리먼트 삭제
+          d3.select(this).remove();
+        });
+    };
+
+    // 0.8초마다 유닛 1개씩 생성
+    const spawnerInterval = setInterval(spawnFlyingUnit, 800);
+
+    return () => {
+      clearInterval(spawnerInterval);
+    };
+  }, [topology, viewMode]); // 의존성 배열에 topology와 viewMode 추가
+  
   // ─── 메인 지도 렌더링 ────────────────────────────────────────────────────
   useEffect(() => {
     if (!topology || !svgRef.current) return;
