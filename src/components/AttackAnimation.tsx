@@ -47,30 +47,30 @@ export default function AttackAnimation({ players }: Props) {
   const [events, setEvents] = useState<AttackEvent[]>([]);
   const [shown, setShown] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    // 최근 공격 결과 실시간 구독
-    const channel = supabase
-      .channel('attack_results_realtime')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'attack_results'
-      }, (payload) => {
-        const newEvent = payload.new as AttackEvent;
-        if (!shown.has(newEvent.id)) {
-          setEvents(prev => [...prev, newEvent]);
-          setShown(prev => new Set([...prev, newEvent.id]));
+// 수정 - 마운트 시 한 번만 구독
+useEffect(() => {
+  const shownIds = new Set<string>();  // ← 로컬 변수로
 
-          // 5초 후 자동 제거
-          setTimeout(() => {
-            setEvents(prev => prev.filter(e => e.id !== newEvent.id));
-          }, 5000);
-        }
-      })
-      .subscribe();
+  const channel = supabase
+    .channel('attack_results_realtime')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'attack_results'
+    }, (payload) => {
+      const newEvent = payload.new as AttackEvent;
+      if (!shownIds.has(newEvent.id)) {
+        shownIds.add(newEvent.id);  // ← state 대신 로컬 변수 사용
+        setEvents(prev => [...prev, newEvent]);
+        setTimeout(() => {
+          setEvents(prev => prev.filter(e => e.id !== newEvent.id));
+        }, 5000);
+      }
+    })
+    .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [shown]);
+  return () => { supabase.removeChannel(channel); };
+}, []);  // ✅ 빈 배열
 
   const getOwnerName = (ownerId: string) => players.find(p => p.id === ownerId)?.name || '알 수 없음';
   const getOwnerColor = (ownerId: string) => players.find(p => p.id === ownerId)?.color || '#666';
