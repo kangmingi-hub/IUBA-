@@ -236,7 +236,19 @@ const myPlayer = players.find(p => p.name === resolvedName);
                     </button>
                   )}
 
-{ownedCountry?.isDestroyed && canBuild && (
+{ownedCountry?.isDestroyed && (isAdmin ? (
+  <button
+    onClick={() => onRestore(selectedCountry.id)}
+    className="w-full py-4 rounded-2xl font-black text-white flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+    style={{
+      background: 'linear-gradient(135deg, rgba(239,68,68,0.8), rgba(220,38,38,0.8))',
+      border: '1px solid rgba(239,68,68,0.5)',
+      boxShadow: '0 4px 20px rgba(239,68,68,0.3)',
+    }}
+  >
+    🔧 영토 복구 (어드민 무료)
+  </button>
+) : canBuild && (
   <button
     onClick={() => onRestore(selectedCountry.id)}
     className="w-full py-4 rounded-2xl font-black text-white flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
@@ -248,7 +260,7 @@ const myPlayer = players.find(p => p.name === resolvedName);
   >
     🔧 영토 복구 (30 MINERAL)
   </button>
-)}
+))}
                   
                   {canBuild ? (
                     <button
