@@ -94,7 +94,8 @@ const fetchMergeGroups = async () => {
             id: row.country_id,
             name: row.country_name,
             ownerId: row.owner_id,
-            buildings: row.buildings || 0
+            buildings: row.buildings || 0,
+            isDestroyed: row.is_destroyed || false 
           };
         });
         setGameState(prev => ({ ...prev, countries }));
@@ -447,7 +448,8 @@ useEffect(() => {
       country_name: countryName,
       owner_id: player.id,
       owner_name: player.name,
-      buildings: 0
+      buildings: 0,
+      is_destroyed: false
     });
 
     // ✅ 추가: country_purchases에 기록 → 다른 기기 포인트 차감 동기화
@@ -461,7 +463,7 @@ useEffect(() => {
     setGameState(prev => ({
       ...prev,
       players: prev.players.map(p => p.id === playerId ? { ...p, gold: p.gold - price } : p),
-      countries: { ...prev.countries, [countryId]: { id: countryId, name: countryName, ownerId: player.id, buildings: 0 } }
+      countries: { ...prev.countries, [countryId]: { id: countryId, name: countryName, ownerId: player.id, buildings: 0, isDestroyed: false } }
     }));
     addLog(`${player.name}님이 ${countryName}를 ${price}G에 점령했습니다!`, 'purchase');
   };
