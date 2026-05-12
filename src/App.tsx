@@ -70,6 +70,7 @@ const occupiedCountries = Object.values(gameState.countries as Record<string, Co
   return (
     <div className="min-h-screen text-white font-sans p-4 md:p-8" style={{ position: 'relative' }}>
       <HologramBackground /> 
+      <AttackAnimation players={gameState.players} />
       <header className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-center gap-4 p-6 rounded-2xl"
   style={{
     background: 'rgba(255,255,255,0.38)',
@@ -176,7 +177,6 @@ const occupiedCountries = Object.values(gameState.countries as Record<string, Co
           <AnimatePresence mode="wait">
             {activeTab === 'map' && (
               <div className="flex-1 flex flex-col gap-3 relative" style={{ touchAction: 'none' }}>
-                <AttackAnimation players={gameState.players} />
                 <WorldMap
                   countries={gameState.countries}
                   players={gameState.players}
