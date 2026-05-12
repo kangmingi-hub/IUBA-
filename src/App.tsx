@@ -136,26 +136,27 @@ export default function App() {
 <AttackWarning players={gameState.players} />
       
       <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-10 gap-4">
-      <section className="lg:col-span-3 space-y-6">
-          <Leaderboard
-            clubPoints={clubPoints}
-            players={gameState.players}
-            countries={gameState.countries}
-            isSyncing={isSyncing}
-            onRefresh={fetchClubPoints}
-            onReset={resetGame}
-            onResetManual={resetManualPoints}
-            currentUser={currentUser}
-            <DefensePanel  // ← 여기 추가
+          <section className="lg:col-span-3 space-y-6">
+  <Leaderboard
+    clubPoints={clubPoints}
     players={gameState.players}
     countries={gameState.countries}
-          />
-        </section>
+    isSyncing={isSyncing}
+    onRefresh={fetchClubPoints}
+    onReset={resetGame}
+    onResetManual={resetManualPoints}
+    currentUser={currentUser}
+  />
+  <DefensePanel
+    players={gameState.players}
+    countries={gameState.countries}
+  />
+</section>
 
         <section className="lg:col-span-7 min-h-[600px] flex flex-col">
           <AnimatePresence mode="wait">
             {activeTab === 'map' && (
-              <div className="flex-1 flex flex-col gap-3" style={{ touchAction: 'none' }}>
+              <div className="flex-1 flex flex-col gap-3 relative" style={{ touchAction: 'none' }}>
                 <AttackAnimation players={gameState.players} />
                 <WorldMap
                   countries={gameState.countries}
