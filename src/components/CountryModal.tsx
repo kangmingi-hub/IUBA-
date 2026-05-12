@@ -5,6 +5,8 @@ import { Player, CountryState, User } from '../types';
 import { COUNTRY_PRICES, DEFAULT_COUNTRY_PRICE, CLUB_IMAGES, getBuildingTiers, TEAM_ALIASES } from '../constants';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
@@ -22,6 +24,20 @@ onBuild: (countryId: string) => void;
 
 export default function CountryModal({ selectedCountry, countries, players, currentUser, onClose, onBuy, onBuild, onBuildDefense }: Props) {
   if (!selectedCountry) return null;
+  const [defenseData, setDefenseData] = useState<{ defense_buildings: number; defense_power: number } | null>(null);
+
+  useEffect(() => {
+    if (!selectedCountry) return;
+    const fetch = async () => {
+      const { data } = await supabase
+        .from('country_defenses')
+        .select('defense_buildings, defense_power')
+        .eq('country_id', selectedCountry.id)
+        .single();
+      setDefenseData(data || null);
+    };
+    fetch();
+  }, [selectedCountry?.id]);
 
   const ownedCountry = countries[selectedCountry.id] || countries[selectedCountry.name];
   const isAdmin = currentUser?.role === 'admin';
@@ -145,6 +161,23 @@ const myPlayer = players.find(p => p.name === resolvedName);
                     </div>
                   </div>
 
+                  {defenseData && (
+                    <div className="p-4 rounded-2xl flex items-center justify-between"
+                      style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)' }}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🛡️</span>
+                        <div>
+                          <p className="text-[10px] text-emerald-400 uppercase font-bold tracking-widest">방어 건물</p>
+                          <p className="text-white font-black">{defenseData.defense_buildings}개</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-emerald-400 uppercase font-bold tracking-widest">방어력</p>
+                        <p className="text-emerald-400 font-black text-xl">{defenseData.defense_power}</p>
+                      </div>
+                    </div>
+                  )}
+                  
               {canBuild && (
                     <button
                       onClick={() => onBuildDefense(selectedCountry.id)}
