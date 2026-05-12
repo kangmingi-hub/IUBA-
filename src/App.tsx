@@ -27,6 +27,7 @@ import MergesPanel from './components/MergesPanel';
 import AttackWarning from './components/AttackWarning';
 import DefensePanel from './components/DefensePanel';
 import AttackAnimation from './components/AttackAnimation';
+import AttackAdminPanel from './components/AttackAdminPanel';
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 
@@ -168,14 +169,17 @@ export default function App() {
               </div>
             )}
             {activeTab === 'admin' && currentUser?.role === 'admin' && (
-              <AdminPanel
-                players={gameState.players}
-                onSubmit={handleAdminSubmit}
-                startDate={startDate}
-                onStartDateChange={setStartDate}
-                onRefresh={fetchClubPoints}
-              />
-            )}
+  <div className="space-y-4">
+    <AdminPanel
+      players={gameState.players}
+      onSubmit={handleAdminSubmit}
+      startDate={startDate}
+      onStartDateChange={setStartDate}
+      onRefresh={fetchClubPoints}
+    />
+    <AttackAdminPanel players={gameState.players} />
+  </div>
+)}
             {activeTab === 'territories' && currentUser?.role === 'admin' && (
               <TerritoriesPanel
                 players={gameState.players}
