@@ -107,44 +107,85 @@ const myPlayer = players.find(p => p.name === resolvedName);
 
               {ownedCountry?.ownerId ? (
                 <div className="space-y-6">
-                  <div className="flex items-center justify-center h-28 bg-[#FAFBFF] rounded-2xl border border-[#E2E8F0] shadow-inner mb-4">
-                    <div className="flex items-center gap-4">
-                      <motion.div layout transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="relative z-10">
-                        <img
-                          src={(() => {
-                            const owner = players.find(p => p.id === ownedCountry.ownerId);
-                            return owner
-                              ? (CLUB_IMAGES[owner.name] || owner.characterUrl || "https://cdn-icons-png.flaticon.com/512/149/149071.png")
-                              : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-                          })()}
-                          alt="캐릭터"
-                          className="w-16 h-16 rounded-full border-4 shadow-md bg-white object-cover"
-                          style={{ borderColor: players.find(p => p.id === ownedCountry.ownerId)?.color || '#3B82F6' }}
-                          onError={(e) => { (e.target as HTMLImageElement).src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; }}
-                        />
-                      </motion.div>
-                      <AnimatePresence>
-                        {ownedCountry.buildings > 0 && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0, x: -20 }}
-                            animate={{ opacity: 1, scale: 1, x: 0 }}
-                            exit={{ opacity: 0, scale: 0, x: -20 }}
-                            transition={{ type: "spring", bounce: 0.4, duration: 0.6 }}
-                            className="relative z-20"
-                          >
-                            <img
-                              src="https://cdn-icons-png.flaticon.com/512/2555/2555572.png"
-                              alt="건물"
-                              className="w-16 h-16 drop-shadow-xl object-contain"
-                            />
-                            <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
-                              Lv.{ownedCountry.buildings}
-                            </span>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </div>
+                <div className="flex items-center justify-center h-28 bg-[#FAFBFF] rounded-2xl border border-[#E2E8F0] shadow-inner mb-4">
+                                    <div className="flex items-center justify-center relative w-full h-full">
+                
+                                      {/* 방어 건물 배경 이미지 */}
+                                      <AnimatePresence>
+                                        {defenseData && defenseData.defense_buildings > 0 && (
+                                          <motion.div
+                                            initial={{ opacity: 0, scale: 0 }}
+                                            animate={{ opacity: 0.25, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0 }}
+                                            className="absolute inset-0 flex items-center justify-center"
+                                          >
+                                            <img
+                                              src="https://cdn-icons-png.flaticon.com/512/1528/1528674.png"
+                                              alt="방어건물"
+                                              className="w-24 h-24 object-contain"
+                                              style={{ filter: 'hue-rotate(120deg)' }}
+                                            />
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
+                
+                                      {/* 캐릭터 이미지 */}
+                                      <motion.div layout transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="relative z-10">
+                                        <img
+                                          src={(() => {
+                                            const owner = players.find(p => p.id === ownedCountry.ownerId);
+                                            return owner
+                                              ? (CLUB_IMAGES[owner.name] || owner.characterUrl || "https://cdn-icons-png.flaticon.com/512/149/149071.png")
+                                              : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+                                          })()}
+                                          alt="캐릭터"
+                                          className="w-16 h-16 rounded-full border-4 shadow-md bg-white object-cover"
+                                          style={{ borderColor: players.find(p => p.id === ownedCountry.ownerId)?.color || '#3B82F6' }}
+                                          onError={(e) => { (e.target as HTMLImageElement).src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; }}
+                                        />
+                                      </motion.div>
+                
+                                      {/* 센터 건물 아이콘 */}
+                                      <AnimatePresence>
+                                        {ownedCountry.buildings > 0 && (
+                                          <motion.div
+                                            initial={{ opacity: 0, scale: 0, x: -20 }}
+                                            animate={{ opacity: 1, scale: 1, x: 0 }}
+                                            exit={{ opacity: 0, scale: 0, x: -20 }}
+                                            transition={{ type: "spring", bounce: 0.4, duration: 0.6 }}
+                                            className="relative z-20"
+                                          >
+                                            <img
+                                              src="https://cdn-icons-png.flaticon.com/512/2555/2555572.png"
+                                              alt="건물"
+                                              className="w-16 h-16 drop-shadow-xl object-contain"
+                                            />
+                                            <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
+                                              Lv.{ownedCountry.buildings}
+                                            </span>
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
+                
+                                      {/* 방어 건물 수 뱃지 */}
+                                      <AnimatePresence>
+                                        {defenseData && defenseData.defense_buildings > 0 && (
+                                          <motion.div
+                                            initial={{ opacity: 0, scale: 0 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0 }}
+                                            className="absolute top-2 right-4 z-30 flex items-center gap-1 px-2 py-1 rounded-full"
+                                            style={{ background: 'rgba(16,185,129,0.9)' }}
+                                          >
+                                            <span className="text-[10px]">🛡️</span>
+                                            <span className="text-white text-[10px] font-black">{defenseData.defense_buildings}</span>
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
+                
+                                    </div>
+                                  </div>
+                  
 
                   <div className="p-6 bg-[#FAFBFF] rounded-2xl border border-[#E2E8F0] flex items-center justify-between shadow-sm">
                     <div>
