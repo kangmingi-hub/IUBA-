@@ -209,6 +209,7 @@ export default function App() {
         onClose={() => setSelectedCountry(null)}
         onBuy={buyCountry}
         onBuild={buildInCountry}
+        onRestore={restoreCountry}
         currentUser={currentUser}
       />
 
