@@ -110,24 +110,6 @@ const myPlayer = players.find(p => p.name === resolvedName);
                 <div className="flex items-center justify-center h-28 bg-[#FAFBFF] rounded-2xl border border-[#E2E8F0] shadow-inner mb-4">
                                     <div className="flex items-center justify-center relative w-full h-full">
                 
-                                      {/* 방어 건물 배경 이미지 */}
-                                      <AnimatePresence>
-                                        {defenseData && defenseData.defense_buildings > 0 && (
-                                          <motion.div
-                                            initial={{ opacity: 0, scale: 0 }}
-                                            animate={{ opacity: 0.25, scale: 1 }}
-                                            exit={{ opacity: 0, scale: 0 }}
-                                            className="absolute inset-0 flex items-center justify-center"
-                                          >
-                                            <img
-                                              src="https://cdn-icons-png.flaticon.com/512/1528/1528674.png"
-                                              alt="방어건물"
-                                              className="w-24 h-24 object-contain"
-                                              style={{ filter: 'hue-rotate(120deg)' }}
-                                            />
-                                          </motion.div>
-                                        )}
-                                      </AnimatePresence>
                 
                                       {/* 캐릭터 이미지 */}
                                       <motion.div layout transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="relative z-10">
@@ -166,6 +148,26 @@ const myPlayer = players.find(p => p.name === resolvedName);
                                           </motion.div>
                                         )}
                                       </AnimatePresence>
+
+                                      {/* 방어 건물 방패 아이콘 */}
+                      <AnimatePresence>
+                        {defenseData && defenseData.defense_buildings > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0 }}
+                            transition={{ type: "spring", bounce: 0.4, duration: 0.6 }}
+                            className="relative z-30"
+                          >
+                            <div className="w-14 h-14 flex items-center justify-center text-4xl drop-shadow-xl">
+                              🛡️
+                            </div>
+                            <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
+                              {defenseData.defense_buildings}
+                            </span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                 
                                       {/* 방어 건물 수 뱃지 */}
                                       <AnimatePresence>
