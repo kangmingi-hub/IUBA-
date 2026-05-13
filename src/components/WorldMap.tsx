@@ -182,7 +182,7 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
 
     const spawnFlyingUnit = () => {
       const targets = Array.from(warCountriesRef.current);
-      // if (targets.length === 0) return; // ← 전쟁 없으면 스폰 안 함
+      if (targets.length === 0) return; // ← 전쟁 없으면 스폰 안 함
 
       const targetName = targets[Math.floor(Math.random() * targets.length)];
       const targetFeature = filteredFeatures.find(
@@ -237,7 +237,7 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
 
     const spawnUnit = () => {
       const targets = Array.from(warCountriesRef.current);
-      // if (targets.length === 0) return; // ← 전쟁 없으면 스폰 안 함
+      if (targets.length === 0) return; // ← 전쟁 없으면 스폰 안 함
 
       const icons = ['✈️', '👿', '🚀', '💀'];
       const icon = icons[Math.floor(Math.random() * icons.length)];
