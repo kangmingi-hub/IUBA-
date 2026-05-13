@@ -606,20 +606,21 @@ return (
     </div>
   </div>        {/* ← 이 줄: return 전체를 감싸는 최외곽 div 닫힘 */}
 
-{/* ★★★ CSS 삽입 ★★★ */}
 <style>{`
-  @keyframes starPulse {
-    0%, 100% { opacity: 0.3; }
-    50%       { opacity: 1;   }
-  }
-  .star-particle {
-    animation: starPulse 2s ease-in-out infinite;
-  }
-  @keyframes synergyFlow {
-    0%   { stroke-dashoffset: 0; }
-    100% { stroke-dashoffset: -20; }
-  }
-  .synergy-line {
-    animation: synergyFlow 1.5s linear infinite;
-  }
-`}</style>
+      @keyframes starPulse {
+        0%, 100% { opacity: 0.3; }
+        50%       { opacity: 1;   }
+      }
+      .star-particle {
+        animation: starPulse 2s ease-in-out infinite;
+      }
+      @keyframes synergyFlow {
+        0%   { stroke-dashoffset: 0; }
+        100% { stroke-dashoffset: -20; }
+      }
+      .synergy-line {
+        animation: synergyFlow 1.5s linear infinite;
+      }
+    `}</style>
+  </div>
+);
