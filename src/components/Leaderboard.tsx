@@ -158,7 +158,7 @@ export default function Leaderboard({ clubPoints, players, countries, isSyncing,
       {/* 스크롤 뷰포트 — 스크롤바 숨김, scrollTop은 JS로 조작 */}
       <div
         ref={scrollRef}
-        className="p-3 space-y-2.5 overflow-y-auto max-h-[calc(100vh-320px)]"
+        className="p-3 space-y-2.5 overflow-y-auto max-h-[calc(100vh-520px)]"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         onMouseEnter={() => pause()}
         onMouseLeave={() => resume(0)}
