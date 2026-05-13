@@ -160,153 +160,152 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
   }, [viewMode, zoomLevel]);
 
 // ─── 비행 유닛(전투기, 마귀 등) 애니메이션 ────────────────────────
- useEffect(() => {
+useEffect(() => {
   if (!topology || !svgRef.current) return;
 
-  // ── 2D 모드: 기존 D3 방식 ──────────────────────────────
-  if (viewMode === '2d') {
-    const svg = d3.select(svgRef.current);
-    const gMain = svg.select('.main-group');
-    if (gMain.empty()) return;
+  // 현재 공전 중인 마귀들 추적 (country_name → element)
+  const orbitingUnits = new Map<string, any>();
 
-    const width = svgRef.current.clientWidth;
-    const height = svgRef.current.clientHeight;
-    const projection = d3.geoMercator()
-      .scale(width / 6.5)
-      .translate([width / 2, height / 1.8]);
-    const path = d3.geoPath().projection(projection);
-    const features = topojson.feature(topology, topology.objects.countries) as any;
-    const filteredFeatures = features.features.filter(
-      (f: any) => f.id !== '010' && f.properties.name !== 'Antarctica'
-    );
+  const updateOrbiters = () => {
+    const warCountries = Array.from(warCountriesRef.current);
 
-    const spawnFlyingUnit = () => {
-      const targets = Array.from(warCountriesRef.current);
-      if (targets.length === 0) return; // ← 전쟁 없으면 스폰 안 함
+    // 전쟁 끝난 나라 마귀 제거
+    orbitingUnits.forEach((unit, name) => {
+      if (!warCountries.includes(name)) {
+        unit.remove?.();
+        orbitingUnits.delete(name);
+      }
+    });
 
-      const targetName = targets[Math.floor(Math.random() * targets.length)];
-      const targetFeature = filteredFeatures.find(
-        (f: any) => f.properties.name === targetName || f.properties.name === COUNTRY_NAME_MAP[targetName]
-      );
-      if (!targetFeature) return;
+    // 새로 전쟁 시작된 나라에 마귀 추가
+    warCountries.forEach(countryName => {
+      if (orbitingUnits.has(countryName)) return; // 이미 있으면 스킵
 
-      const targetCentroid = path.centroid(targetFeature);
-      if (!targetCentroid || isNaN(targetCentroid[0]) || isNaN(targetCentroid[1])) return;
+      if (viewMode === '2d') {
+        // ── 2D: D3 SVG 위에 공전 ──────────────────────
+        const svg = d3.select(svgRef.current!);
+        const gMain = svg.select('.main-group');
+        if (gMain.empty()) return;
 
-      const startAngle = Math.random() * Math.PI * 2;
-      const spawnRadius = Math.max(width, height) * 0.8;
-      const startX = width / 2 + Math.cos(startAngle) * spawnRadius;
-      const startY = height / 2 + Math.sin(startAngle) * spawnRadius;
+        const width = svgRef.current!.clientWidth;
+        const height = svgRef.current!.clientHeight;
+        const projection = d3.geoMercator()
+          .scale(width / 6.5)
+          .translate([width / 2, height / 1.8]);
+        const path = d3.geoPath().projection(projection);
+        const features = topojson.feature(topology, topology.objects.countries) as any;
+        const filteredFeatures = features.features.filter(
+          (f: any) => f.id !== '010' && f.properties.name !== 'Antarctica'
+        );
 
-      const dx = targetCentroid[0] - startX;
-      const dy = targetCentroid[1] - startY;
-      const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
-      const unitIcon = Math.random() > 0.5 ? '✈️' : '👿';
-      const duration = 2000 + Math.random() * 1000;
+        const mappedName = COUNTRY_NAME_MAP[countryName] || countryName;
+        const feature = filteredFeatures.find(
+          (f: any) => f.properties.name === mappedName || f.properties.name === countryName
+        );
+        if (!feature) return;
 
-      const unit = gMain.append('text')
-        .attr('x', startX).attr('y', startY)
-        .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
-        .attr('font-size', '20px').attr('class', 'pointer-events-none')
-        .attr('transform', `rotate(${angle}, ${startX}, ${startY})`)
-        .text(unitIcon);
+        const centroid = path.centroid(feature);
+        if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) return;
 
-      unit.transition().duration(duration).ease(d3.easeCubicIn)
-        .attr('x', targetCentroid[0]).attr('y', targetCentroid[1])
-        .attr('transform', `rotate(${angle}, ${targetCentroid[0]}, ${targetCentroid[1]})`)
-        .on('end', function() {
-          d3.select(this).text('💥')
-            .transition().duration(500)
-            .attr('font-size', '30px').style('opacity', 0).remove();
+        // 타원 반지름
+        const rx = 22 + Math.random() * 10;
+        const ry = 10 + Math.random() * 6;
+
+        const unitEl = gMain.append('text')
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'middle')
+          .attr('font-size', '18px')
+          .attr('class', 'pointer-events-none orbiting-unit')
+          .text('👿');
+
+        let angle = Math.random() * Math.PI * 2;
+        const speed = 0.025 + Math.random() * 0.015;
+
+        const tick = () => {
+          angle += speed;
+          const x = centroid[0] + Math.cos(angle) * rx;
+          const y = centroid[1] + Math.sin(angle) * ry;
+          // 앞쪽(하단)일 때 크게, 뒤쪽(상단)일 때 작게 → 원근감
+          const scale = 0.7 + 0.5 * ((Math.sin(angle) + 1) / 2);
+          const flip = Math.cos(angle) > 0 ? 1 : -1;
+          unitEl
+            .attr('x', x)
+            .attr('y', y)
+            .attr('font-size', `${18 * scale}px`)
+            .attr('transform', `scale(${flip}, 1) translate(${-2 * x * (flip < 0 ? 1 : 0)}, 0)`);
+        };
+
+        const intervalId = setInterval(tick, 30);
+        orbitingUnits.set(countryName, {
+          remove: () => {
+            clearInterval(intervalId);
+            unitEl.remove();
+          }
         });
-    };
 
-    const spawnerInterval = setInterval(spawnFlyingUnit, 1000);
-    return () => {
-      clearInterval(spawnerInterval);
-      gMain.selectAll('text').filter(function() {
-        return ['✈️', '👿', '💥'].includes(d3.select(this).text() as string);
-      }).remove();
-    };
-  }
+      } else {
+        // ── 3D: HTML 오버레이로 공전 ──────────────────────
+        const container = containerRef.current;
+        if (!container) return;
 
-  // ── 3D 모드: HTML 오버레이 방식 ──────────────────────────
-  if (viewMode === '3d') {
-    const container = containerRef.current;
-    if (!container) return;
+        const el = document.createElement('div');
+        el.textContent = '👿';
+        el.style.cssText = `
+          position: absolute;
+          font-size: 22px;
+          pointer-events: none;
+          z-index: 20;
+          filter: drop-shadow(0 0 6px rgba(239,68,68,0.9));
+          transition: font-size 0.1s;
+        `;
+        container.appendChild(el);
 
-    const spawnUnit = () => {
-      const targets = Array.from(warCountriesRef.current);
-      if (targets.length === 0) return; // ← 전쟁 없으면 스폰 안 함
+        // 3D 글로브 중심 기준 타원 공전
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        const cx = w / 2 + (Math.random() - 0.5) * 80;
+        const cy = h / 2 + (Math.random() - 0.5) * 60;
+        const rx = 60 + Math.random() * 40;
+        const ry = 25 + Math.random() * 20;
 
-      const icons = ['✈️', '👿', '🚀', '💀'];
-      const icon = icons[Math.floor(Math.random() * icons.length)];
+        let angle = Math.random() * Math.PI * 2;
+        const speed = 0.02 + Math.random() * 0.015;
 
-      const el = document.createElement('div');
-      el.textContent = icon;
-      el.style.cssText = `
-        position: absolute;
-        font-size: 24px;
-        pointer-events: none;
-        z-index: 10;
-        transition: none;
-        filter: drop-shadow(0 0 6px rgba(239,68,68,0.8));
-      `;
+        const tick = () => {
+          angle += speed;
+          const x = cx + Math.cos(angle) * rx;
+          const y = cy + Math.sin(angle) * ry;
+          // 원근감: 하단일수록 크고 밝게
+          const scale = 0.6 + 0.6 * ((Math.sin(angle) + 1) / 2);
+          const flip = Math.cos(angle) > 0 ? '' : 'scaleX(-1)';
+          el.style.left = x + 'px';
+          el.style.top = y + 'px';
+          el.style.fontSize = `${22 * scale}px`;
+          el.style.transform = flip;
+          el.style.opacity = String(0.5 + 0.5 * scale);
+        };
 
-      // 화면 가장자리 랜덤 시작점
-      const side = Math.floor(Math.random() * 4);
-      const w = container.clientWidth;
-      const h = container.clientHeight;
-      let startX: number, startY: number, endX: number, endY: number;
+        const intervalId = setInterval(tick, 30);
+        orbitingUnits.set(countryName, {
+          remove: () => {
+            clearInterval(intervalId);
+            el.remove();
+          }
+        });
+      }
+    });
+  };
 
-      // 글로브 중심으로 날아가기
-      const centerX = w / 2;
-      const centerY = h / 2;
-      const offset = 60;
+  // 1초마다 전쟁 상태 체크해서 마귀 업데이트
+  updateOrbiters();
+  const checkInterval = setInterval(updateOrbiters, 1000);
 
-      if (side === 0) { startX = Math.random() * w; startY = -30; }
-      else if (side === 1) { startX = w + 30; startY = Math.random() * h; }
-      else if (side === 2) { startX = Math.random() * w; startY = h + 30; }
-      else { startX = -30; startY = Math.random() * h; }
-
-      endX = centerX + (Math.random() - 0.5) * offset;
-      endY = centerY + (Math.random() - 0.5) * offset;
-
-      const dx = endX - startX;
-      const dy = endY - startY;
-      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-
-      el.style.left = startX + 'px';
-      el.style.top = startY + 'px';
-      el.style.transform = `rotate(${angle + 90}deg)`;
-      container.appendChild(el);
-
-      const duration = 2500 + Math.random() * 1000;
-      const start = performance.now();
-
-      const animate = (now: number) => {
-        const progress = Math.min((now - start) / duration, 1);
-        const ease = progress < 0.5
-          ? 2 * progress * progress
-          : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-
-        el.style.left = (startX + dx * ease) + 'px';
-        el.style.top = (startY + dy * ease) + 'px';
-
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        } else {
-          // 도착 시 폭발 이모지로 교체 후 페이드아웃
-          el.textContent = '💥';
-          el.style.fontSize = '32px';
-          el.style.transform = 'none';
-          el.style.transition = 'opacity 0.5s';
-          el.style.opacity = '0';
-          setTimeout(() => el.remove(), 500);
-        }
-      };
-      requestAnimationFrame(animate);
-    };
+  return () => {
+    clearInterval(checkInterval);
+    orbitingUnits.forEach(unit => unit.remove?.());
+    orbitingUnits.clear();
+  };
+}, [topology, viewMode]);
 
     const spawnerInterval = setInterval(spawnUnit, 1200);
     return () => {
