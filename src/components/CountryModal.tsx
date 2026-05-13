@@ -232,7 +232,7 @@ const myPlayer = players.find(p => p.name === resolvedName);
                         boxShadow: '0 4px 20px rgba(16,185,129,0.3)',
                       }}
                     >
-                      🛡️ 방어 건물 건설 (50 MINERAL)
+                      🛡️ 방어 건물 건설 (15 GAS)
                     </button>
                   )}
 
@@ -246,7 +246,7 @@ const myPlayer = players.find(p => p.name === resolvedName);
       boxShadow: '0 4px 20px rgba(239,68,68,0.3)',
     }}
   >
-    🔧 영토 복구 (어드민 무료)
+    🔧 영토 복구 (30 GAS)
   </button>
 ) : canBuild && (
   <button
