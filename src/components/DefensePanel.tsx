@@ -76,7 +76,7 @@ export default function DefensePanel({ players, countries }: Props) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl overflow-hidden"
+      className="rounded-b-2xl overflow-hidden"
       style={{
         background: 'rgba(255,255,255,0.05)',
         backdropFilter: 'blur(28px)',
