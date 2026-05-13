@@ -316,7 +316,7 @@ useEffect(() => {
     const width = svgRef.current.clientWidth;
     const height = svgRef.current.clientHeight;
 
-    svg.selectAll('*').remove();
+    svg.selectAll(':not(.particle-layer)').remove();
 
     const minSize = Math.min(width, height);
 
@@ -660,14 +660,16 @@ useEffect(() => {
     return () => { tooltip.remove(); };
   }, [topology, countries, players, viewMode, rotation, zoomLevel]);
 
-  // ─── warEvents 파티클 애니메이션 (별도 useEffect) ────────────────────────
-// warEvents useEffect를 이렇게 교체
 useEffect(() => {
   if (!topology || !svgRef.current || viewMode !== '2d') return;
-
   const svg = d3.select(svgRef.current);
-  const gMain = svg.select('.main-group');
-  const gPerspective = gMain.select('g');
+  
+  // 파티클 전용 레이어 - 없으면 새로 만들고, 있으면 재사용
+  let particleLayer = svg.select<SVGGElement>('.particle-layer');
+  if (particleLayer.empty()) {
+    particleLayer = svg.append('g').attr('class', 'particle-layer');
+  }
+
   const width = svgRef.current.clientWidth;
   const height = svgRef.current.clientHeight;
   const projection = d3.geoMercator()
@@ -679,9 +681,8 @@ useEffect(() => {
     (f: any) => f.id !== '010' && f.properties.name !== 'Antarctica'
   );
 
-  // 새로 추가된 이벤트만 처리 (이미 interval 돌고 있는 건 건드리지 않음)
   warEvents.forEach((warEvent) => {
-    if (activeWarIntervalsRef.current.has(warEvent.id)) return; // 이미 실행 중이면 스킵
+    if (activeWarIntervalsRef.current.has(warEvent.id)) return;
 
     const mappedName = COUNTRY_NAME_MAP[warEvent.country_name] || warEvent.country_name;
     const feature = filteredFeatures.find((f: any) =>
@@ -701,7 +702,7 @@ useEffect(() => {
         const size = 2 + Math.random() * 4;
         const duration = 800 + Math.random() * 600;
         const hue = isConquered ? Math.random() * 30 : 120 + Math.random() * 40;
-        gPerspective.append('circle')
+        particleLayer.append('circle')  // ← gPerspective 대신 particleLayer
           .attr('cx', centroid[0]).attr('cy', centroid[1])
           .attr('r', size)
           .attr('fill', `hsl(${hue}, 100%, 60%)`)
@@ -712,7 +713,7 @@ useEffect(() => {
           .attr('cy', centroid[1] + Math.sin(angle) * distance)
           .attr('opacity', 0).attr('r', 0).remove();
       }
-      gPerspective.append('circle')
+      particleLayer.append('circle')
         .attr('cx', centroid[0]).attr('cy', centroid[1])
         .attr('r', 5).attr('fill', 'none')
         .attr('stroke', isConquered ? '#ef4444' : '#22c55e')
@@ -720,7 +721,7 @@ useEffect(() => {
         .attr('class', 'pointer-events-none')
         .transition().duration(600).ease(d3.easeQuadOut)
         .attr('r', 30).attr('opacity', 0).remove();
-      gPerspective.append('text')
+      particleLayer.append('text')
         .attr('x', centroid[0]).attr('y', centroid[1] - 10)
         .attr('text-anchor', 'middle').attr('font-size', 16)
         .attr('class', 'pointer-events-none')
@@ -738,7 +739,6 @@ useEffect(() => {
       activeWarIntervalsRef.current.delete(warEvent.id);
     }, 30000);
   });
-
 }, [warEvents, topology, viewMode]);
 
   useEffect(() => {
