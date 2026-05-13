@@ -623,6 +623,3 @@ return (
     animation: synergyFlow 1.5s linear infinite;
   }
 `}</style>
-
-  );  {/* ← 파일 마지막 줄: return 닫힘 */}
-}     {/* ← 컴포넌트 함수 닫힘 */}
