@@ -541,7 +541,7 @@ useEffect(() => {
         const distance = 10 + Math.random() * 40;
         const size = 2 + Math.random() * 4;
         const duration = 800 + Math.random() * 600;
-        const hue = isConquered ? Math.random() * 30 : 120 + Math.random() * 40;
+        const hue = Math.random() * 30;
         gPerspective.append('circle')  // ← gPerspective 대신 gPerspective
           .attr('cx', centroid[0]).attr('cy', centroid[1])
           .attr('r', size)
@@ -556,7 +556,7 @@ useEffect(() => {
       gPerspective.append('circle')
         .attr('cx', centroid[0]).attr('cy', centroid[1])
         .attr('r', 5).attr('fill', 'none')
-        .attr('stroke', isConquered ? '#ef4444' : '#22c55e')
+        .attr('stroke', '#ef4444')
         .attr('stroke-width', 3).attr('opacity', 1)
         .attr('class', 'pointer-events-none')
         .transition().duration(600).ease(d3.easeQuadOut)
