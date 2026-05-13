@@ -687,6 +687,6 @@ const handleDeleteMergeGroup = async (id: string) => {
     handleAddMember, handleDeleteMember, handleAdminSubmit,
     handleCancelOccupation, healGhostData, buyCountry, buildInCountry, resetGame,
     cancelBuilding, resetManualPoints, handleColorChange, handleChangePassword, buildDefense,
-    mergeGroups, handleAddMergeGroup, handleDeleteMergeGroup, restoreCountry,
+    mergeGroups, handleAddMergeGroup, handleDeleteMergeGroup, restoreCountry, cancelDefense,
   };
 }
