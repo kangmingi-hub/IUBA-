@@ -205,6 +205,7 @@ const occupiedCountries = Object.values(gameState.countries as Record<string, Co
                 countries={gameState.countries}
                 onCancel={handleCancelOccupation}
                 onCancelBuilding={cancelBuilding}
+                onCancelDefense={cancelDefense}
                 onHealGhosts={healGhostData}
               />
             )}
