@@ -307,14 +307,6 @@ useEffect(() => {
   };
 }, [topology, viewMode]);
 
-    const spawnerInterval = setInterval(spawnUnit, 1200);
-    return () => {
-      clearInterval(spawnerInterval);
-      // 남아있는 유닛 정리
-      container.querySelectorAll('div[style*="pointer-events: none"]').forEach(el => el.remove());
-    };
-  }
-}, [topology, viewMode]);
   
   // ─── 메인 지도 렌더링 ────────────────────────────────────────────────────
   useEffect(() => {
