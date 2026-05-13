@@ -479,6 +479,7 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
             .attr('class', 'pointer-events-none')
             .attr('opacity', 0.85)
             .attr('style', 'filter: hue-rotate(120deg)');
+        }
 
 
         // 이미지들 다 그린 후 맨 위에 오버레이
