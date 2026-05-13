@@ -154,7 +154,7 @@ const occupiedCountries = Object.values(gameState.countries as Record<string, Co
 <AttackWarning players={gameState.players} />
       
       <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-10 gap-4">
-          <section className="lg:col-span-3 space-y-6">
+          <section className="lg:col-span-3 flex flex-col gap-0">
   <Leaderboard
     clubPoints={clubPoints}
     players={gameState.players}
