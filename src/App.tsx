@@ -179,6 +179,7 @@ const occupiedCountries = Object.values(gameState.countries as Record<string, Co
                   countries={gameState.countries}
                   players={gameState.players}
                   onCountryClick={(id, name) => setSelectedCountry({ id, name })}
+                  defenses={defenses}
                 />
                 <OccupancyBar
                   countries={gameState.countries}
