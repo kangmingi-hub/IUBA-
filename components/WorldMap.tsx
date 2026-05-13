@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import * as topojson from 'topojson-client';
 import { CountryState, Player } from '../types';
-import { COUNTRY_PRICES, DEFAULT_COUNTRY_PRICE, BUILDING_TIERS } from '../constants';
+import { COUNTRY_PRICES, DEFAULT_COUNTRY_PRICE, BUILDING_TIERS, COUNTRY_NAME_MAP } from '../constants';
 import { Globe as GlobeIcon, ZoomIn, ZoomOut, ArrowLeft, RefreshCcw } from 'lucide-react';
 
 interface WorldMapProps {
@@ -54,6 +54,19 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
     svg.selectAll('*').remove();
 
     const minSize = Math.min(width, height);
+
+    // defs 블록 (3D 모드 defs와 별개로, 항상 추가)
+    const defs = svg.append('defs');
+
+    // 별빛 glow 필터
+    const starGlow = defs.append('filter').attr('id', 'star-glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
+    starGlow.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur');
+    starGlow.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).enter().append('feMergeNode').attr('in', d => d);
+      
+    // 시너지 연결선 glow 필터
+    const lineGlow = defs.append('filter').attr('id', 'line-glow').attr('x', '-20%').attr('y', '-20%').attr('width', '140%').attr('height', '140%');
+    lineGlow.append('feGaussianBlur').attr('stdDeviation', '2').attr('result', 'blur');
+    lineGlow.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).enter().append('feMergeNode').attr('in', d => d);
     
     // Projection setup
     const projection = viewMode === '3d' 
@@ -136,19 +149,6 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
         .attr('r', (minSize / 2.2 * zoomLevel))
         .attr('fill', 'url(#globe-gradient)')
         .attr('opacity', 0.4);
-
-      // defs 블록 (3D 모드 defs와 별개로, 항상 추가)
-      const defs = svg.append('defs');
-      
-      // 별빛 glow 필터
-      const starGlow = defs.append('filter').attr('id', 'star-glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
-      starGlow.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur');
-      starGlow.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).enter().append('feMergeNode').attr('in', d => d);
-      
-      // 시너지 연결선 glow 필터
-      const lineGlow = defs.append('filter').attr('id', 'line-glow').attr('x', '-20%').attr('y', '-20%').attr('width', '140%').attr('height', '140%');
-      lineGlow.append('feGaussianBlur').attr('stdDeviation', '2').attr('result', 'blur');
-      lineGlow.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).enter().append('feMergeNode').attr('in', d => d);
       
       const grad = defs.append('radialGradient').attr('id', 'globe-gradient');
       grad.append('stop').attr('offset', '70%').attr('stop-color', '#f1f5f9').attr('stop-opacity', 0);
@@ -312,6 +312,67 @@ const isOwned = !!(state?.ownerId && players.some(p => p.id === state.ownerId));
             });
     }
 
+        // ──────────────────────────────────────────
+    // ★ 2단계 삽입 시작
+    // ──────────────────────────────────────────
+    if (viewMode === '2d') {
+      const ownedCentroids: { name: string; centroid: [number, number]; color: string }[] = [];
+      
+      Object.values(countries).forEach((state) => {
+        if (!state?.ownerId) return;
+        const player = players.find(p => p.id === state.ownerId);
+        if (!player) return;
+        const mappedName = COUNTRY_NAME_MAP[state.name] || state.name;
+        const feature = filteredFeatures.find((f: any) =>
+          f.properties.name === mappedName || f.properties.name === state.name
+        );
+        if (!feature) return;
+        const centroid = path.centroid(feature);
+        if (!centroid || isNaN(centroid[0])) return;
+        ownedCentroids.push({ name: state.name, centroid, color: player.color || '#c8a8ff' });
+      });
+      
+      const SYNERGY_DIST = 150 / zoomLevel; // 줌 레벨 보정
+      const gSynergy = gPerspective.append('g').attr('class', 'synergy-lines');
+      
+      for (let i = 0; i < ownedCentroids.length; i++) {
+        for (let j = i + 1; j < ownedCentroids.length; j++) {
+          const a = ownedCentroids[i];
+          const b = ownedCentroids[j];
+          const dx = a.centroid[0] - b.centroid[0];
+          const dy = a.centroid[1] - b.centroid[1];
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist > SYNERGY_DIST) continue;
+      
+          const gradId = `syn-grad-${i}-${j}`;
+          const grad = defs.append('linearGradient').attr('id', gradId)
+            .attr('x1', a.centroid[0]).attr('y1', a.centroid[1])
+            .attr('x2', b.centroid[0]).attr('y2', b.centroid[1])
+            .attr('gradientUnits', 'userSpaceOnUse');
+          grad.append('stop').attr('offset', '0%').attr('stop-color', a.color);
+          grad.append('stop').attr('offset', '100%').attr('stop-color', b.color);
+      
+          gSynergy.append('line')
+            .attr('x1', a.centroid[0]).attr('y1', a.centroid[1])
+            .attr('x2', b.centroid[0]).attr('y2', b.centroid[1])
+            .attr('stroke', `url(#${gradId})`)
+            .attr('stroke-width', 1.5)
+            .attr('stroke-dasharray', '6 4')
+            .attr('opacity', 0.7)
+            .attr('filter', 'url(#line-glow)')
+            .attr('class', 'synergy-line pointer-events-none');
+        }
+      }
+    }
+    // ──────────────────────────────────────────
+    // ★ 2단계 삽입 끝
+    // ──────────────────────────────────────────
+    
+    // ✅ 기존 이미지 렌더 루프 (건드리지 않음)
+    Object.values(countries).forEach((state) => {
+      if (!state?.ownerId) return;
+      ...
+    
     if (viewMode === '2d') {
       const gClouds = gPerspective.append('g').attr('class', 'clouds');
       [[100, 100], [800, 150]].forEach(([cx, cy]) => {
