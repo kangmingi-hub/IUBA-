@@ -519,11 +519,7 @@ useEffect(() => {
   // gMain 안에 붙여야 줌/패닝 따라움직임
   const gMain = svg.select<SVGGElement>('.main-group');
   if (gMain.empty()) return;
-
-  let gPerspective = gMain.select<SVGGElement>('.particle-layer');
-  if (gPerspective.empty()) {
-    gPerspective = gMain.append('g').attr('class', 'particle-layer');
-  }
+  
   
   // 파티클 전용 레이어 - 없으면 새로 만들고, 있으면 재사용
   let gPerspective = svg.select<SVGGElement>('.particle-layer');
@@ -632,7 +628,6 @@ const intervalId = setInterval(() => {
 }, 2000);
     
     burst();
-    const intervalId = setInterval(burst, 2000);
     activeWarIntervalsRef.current.set(warEvent.id, intervalId);
 
     setTimeout(() => {
