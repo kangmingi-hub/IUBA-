@@ -372,7 +372,58 @@ const isOwned = !!(state?.ownerId && players.some(p => p.id === state.ownerId));
     Object.values(countries).forEach((state) => {
       if (!state?.ownerId) return;
       ...
-    
+
+    // ★★★ 3단계 별빛 파티클 삽입 시작 ★★★
+    if (viewMode === '2d') {
+      Object.values(countries).forEach((state) => {
+        if (!state?.ownerId) return;
+        const player = players.find(p => p.id === state.ownerId);
+        if (!player) return;
+
+        const mappedName = COUNTRY_NAME_MAP[state.name] || state.name;
+        const feature = filteredFeatures.find((f: any) =>
+          f.properties.name === mappedName || f.properties.name === state.name
+        );
+        if (!feature) return;
+
+        const centroid = path.centroid(feature);
+        if (!centroid || isNaN(centroid[0])) return;
+
+        const bounds = path.bounds(feature);
+        const boundWidth = bounds[1][0] - bounds[0][0];
+        const boundHeight = bounds[1][1] - bounds[0][1];
+        const countryArea = Math.sqrt(boundWidth * boundHeight);
+        const imageSize = Math.min(Math.max(countryArea * 0.35, 8), 30);
+
+        const buildingLevel = state.buildings || 0;
+        if (buildingLevel === 0) return; // 건물 없으면 별 없음
+
+        const isOwned = !!state.ownerId;
+        const targetDepth = isOwned ? (6 + buildingLevel * 4) : 0;
+        const starCount = buildingLevel * 2;
+        const starRadius = imageSize * 0.9;
+
+        for (let s = 0; s < starCount; s++) {
+          const angle = (s / starCount) * Math.PI * 2;
+          const sx = centroid[0] + Math.cos(angle) * starRadius;
+          const sy = centroid[1] + Math.sin(angle) * starRadius - targetDepth;
+          const starSize = 1.5 + (buildingLevel / 5) * 2.5;
+          const animDelay = `${(s * 0.3).toFixed(1)}s`;
+
+          gPerspective.append('circle')
+            .attr('cx', sx)
+            .attr('cy', sy)
+            .attr('r', starSize)
+            .attr('fill', player.color || '#c8a8ff')
+            .attr('filter', 'url(#star-glow)')
+            .attr('opacity', 0.9)
+            .attr('class', 'star-particle pointer-events-none')
+            .style('animation', `starPulse 2s ease-in-out ${animDelay} infinite`);
+        }
+      });
+    }
+// ★★★ 3단계 별빛 파티클 삽입 끝 ★★★
+      
     if (viewMode === '2d') {
       const gClouds = gPerspective.append('g').attr('class', 'clouds');
       [[100, 100], [800, 150]].forEach(([cx, cy]) => {
@@ -553,5 +604,25 @@ return (
         ))}
       </div>
     </div>
-  </div>
-);
+  </div>        {/* ← 이 줄: return 전체를 감싸는 최외곽 div 닫힘 */}
+
+{/* ★★★ CSS 삽입 ★★★ */}
+<style>{`
+  @keyframes starPulse {
+    0%, 100% { opacity: 0.3; }
+    50%       { opacity: 1;   }
+  }
+  .star-particle {
+    animation: starPulse 2s ease-in-out infinite;
+  }
+  @keyframes synergyFlow {
+    0%   { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: -20; }
+  }
+  .synergy-line {
+    animation: synergyFlow 1.5s linear infinite;
+  }
+`}</style>
+
+  );  {/* ← 파일 마지막 줄: return 닫힘 */}
+}     {/* ← 컴포넌트 함수 닫힘 */}
