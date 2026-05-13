@@ -199,7 +199,17 @@ useEffect(() => {
     const channel = supabase
       .channel('realtime_sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'country_occupations' }, () => { fetchOccupations(); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'attack_results' }, () => { fetchOccupations(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attack_results' }, async (payload: any) => {
+          fetchOccupations();
+          // 30초 후에 방어건물 삭제
+          if (payload.new?.country_id) {
+            setTimeout(async () => {
+              await supabase.from('country_defenses')
+                .delete()
+                .eq('country_id', payload.new.country_id);
+            }, 30000); // 30초
+          }
+        })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => { fetchUsers(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, (payload: any) => {
         if (payload.new?.key === 'start_date') setStartDate(payload.new.value);
