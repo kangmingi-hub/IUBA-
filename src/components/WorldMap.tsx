@@ -480,24 +480,6 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
             .attr('opacity', 0.85)
             .attr('style', 'filter: hue-rotate(120deg)');
 
-          // 방어 건물 수 뱃지
-          gPerspective.append('circle')
-            .attr('cx', centroid[0] - imageSize * 0.5 + defSize * 0.3)
-            .attr('cy', centroid[1] - imageSize * 0.3 - defSize * 0.3 - targetDepth)
-            .attr('r', defSize * 0.28)
-            .attr('fill', '#10b981')
-            .attr('class', 'pointer-events-none');
-          gPerspective.append('text')
-            .attr('x', centroid[0] - imageSize * 0.5 + defSize * 0.3)
-            .attr('y', centroid[1] - imageSize * 0.3 - defSize * 0.3 - targetDepth + defSize * 0.1)
-            .attr('text-anchor', 'middle')
-            .attr('dominant-baseline', 'middle')
-            .attr('fill', 'white')
-            .attr('font-size', defSize * 0.28)
-            .attr('font-weight', '900')
-            .attr('class', 'pointer-events-none')
-            .text(defenseInfo.defense_buildings);
-        }
 
         // 이미지들 다 그린 후 맨 위에 오버레이
         if (state.isDestroyed) {
