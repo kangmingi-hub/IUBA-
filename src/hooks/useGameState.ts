@@ -636,14 +636,14 @@ const restoreCountry = async (countryId: string, isAdmin?: boolean) => {
   }
 
   // 미네랄 환불
-  await supabase.from('country_purchases').insert({
-    club_name: player?.name,
-    country_name: country.name,
-    price_paid: -50,  // 음수로 환불
-    purchased_at: new Date().toISOString()
-  });
+ await supabase.from('building_purchases').insert({
+  club_name: player?.name,
+  building_name: '방어 건물',
+  price_paid: -15,
+  purchased_at: new Date().toISOString()
+});
 
-  addLog(`관리자가 ${player?.name}의 ${country.name} 방어 건물을 취소했습니다. (50 MINERAL 환불)`, 'construction');
+ addLog(`관리자가 ${player?.name}의 ${country.name} 방어 건물을 취소했습니다. (15 GAS 환불)`, 'construction'); 'construction');
   await fetchClubPoints();
 };
   
