@@ -581,7 +581,7 @@ const laserBurst = () => {
   
   for (let i = 0; i < laserCount; i++) {
     const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.6; // 위쪽 ±약 17도
-    const length = 30 + Math.random() * 45;
+    const length = 15 + Math.random() * 20; 
     
     // 시작점 랜덤하게 흔들기
     const startOffsetX = (Math.random() - 0.5) * 20;
@@ -596,7 +596,7 @@ const laserBurst = () => {
         .attr('x1', x1).attr('y1', y1)
         .attr('x2', x2).attr('y2', y2) // 처음부터 끝점까지 바로 그려짐
         .attr('stroke', '#00ccff') // 진한 파란색 고정
-        .attr('stroke-width', 2 + Math.random() * 1.5)
+        .attr('stroke-width', 0.8 + Math.random() * 0.7) // 기존 2~3.5 → 0.8~1.5로 얇게
         .attr('stroke-linecap', 'round')
         .attr('opacity', 1)
         .attr('filter', 'drop-shadow(0 0 3px #00aaff)') // 글로우 효과
