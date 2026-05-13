@@ -29,7 +29,7 @@ export function useGameState() {
     };
   });
 
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+   [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem(AUTH_KEY);
     return saved ? JSON.parse(saved) : null;
   });
@@ -597,6 +597,46 @@ const restoreCountry = async (countryId: string, isAdmin?: boolean) => {
   if (!isAdmin) await fetchClubPoints();
 };
 
+  const cancelDefense = async (countryId: string) => {
+  const country = gameState.countries[countryId];
+  if (!country?.ownerId) return;
+  const player = gameState.players.find(p => p.id === country.ownerId);
+
+  const { data: existing } = await supabase
+    .from('country_defenses')
+    .select('*')
+    .eq('country_id', countryId)
+    .single();
+
+  if (!existing || existing.defense_buildings <= 0) {
+    alert('방어 건물이 없습니다!');
+    return;
+  }
+
+  const newBuildings = existing.defense_buildings - 1;
+  const newPower = existing.defense_power - 10;
+
+  if (newBuildings <= 0) {
+    await supabase.from('country_defenses').delete().eq('country_id', countryId);
+  } else {
+    await supabase.from('country_defenses').update({
+      defense_buildings: newBuildings,
+      defense_power: newPower
+    }).eq('country_id', countryId);
+  }
+
+  // 미네랄 환불
+  await supabase.from('country_purchases').insert({
+    club_name: player?.name,
+    country_name: country.name,
+    price_paid: -50,  // 음수로 환불
+    purchased_at: new Date().toISOString()
+  });
+
+  addLog(`관리자가 ${player?.name}의 ${country.name} 방어 건물을 취소했습니다. (50 MINERAL 환불)`, 'construction');
+  await fetchClubPoints();
+};
+  
   const resetManualPoints = async () => {
     if (window.confirm('관리자가 수동으로 추가한 점수를 초기화하고 원본 점수로 되돌리시겠습니까?')) {
       await fetchClubPoints();
