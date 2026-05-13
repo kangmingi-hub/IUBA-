@@ -643,7 +643,7 @@ const restoreCountry = async (countryId: string, isAdmin?: boolean) => {
   purchased_at: new Date().toISOString()
 });
 
- addLog(`관리자가 ${player?.name}의 ${country.name} 방어 건물을 취소했습니다. (15 GAS 환불)`, 'construction'); 'construction');
+addLog(`관리자가 ${player?.name}의 ${country.name} 방어 건물을 취소했습니다. (15 GAS 환불)`, 'construction');
   await fetchClubPoints();
 };
   
