@@ -29,7 +29,7 @@ export function useGameState() {
     };
   });
 
-   [currentUser, setCurrentUser] = useState<User | null>(() => {
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem(AUTH_KEY);
     return saved ? JSON.parse(saved) : null;
   });
