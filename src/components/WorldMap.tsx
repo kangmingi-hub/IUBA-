@@ -160,104 +160,162 @@ export default function WorldMap({ countries, players, onCountryClick, defenses 
   }, [viewMode, zoomLevel]);
 
 // ─── 비행 유닛(전투기, 마귀 등) 애니메이션 ────────────────────────
-  useEffect(() => {
-    // 1. 2D 모드에서만 실행되는지 확인합니다.
-    if (!topology || !svgRef.current || viewMode !== '2d') return;
+ useEffect(() => {
+  if (!topology || !svgRef.current) return;
 
+  // ── 2D 모드: 기존 D3 방식 ──────────────────────────────
+  if (viewMode === '2d') {
     const svg = d3.select(svgRef.current);
-    // 가장 안전하게 맵 전체를 감싸는 main-group을 타겟으로 잡습니다.
     const gMain = svg.select('.main-group');
-    if (gMain.empty()) return; // 지도가 아직 안 그려졌으면 리턴
+    if (gMain.empty()) return;
 
     const width = svgRef.current.clientWidth;
     const height = svgRef.current.clientHeight;
-    
     const projection = d3.geoMercator()
       .scale(width / 6.5)
       .translate([width / 2, height / 1.8]);
     const path = d3.geoPath().projection(projection);
-
     const features = topojson.feature(topology, topology.objects.countries) as any;
     const filteredFeatures = features.features.filter(
       (f: any) => f.id !== '010' && f.properties.name !== 'Antarctica'
     );
 
     const spawnFlyingUnit = () => {
-      let targets = Array.from(warCountriesRef.current);
-      let targetFeature;
+      const targets = Array.from(warCountriesRef.current);
+      if (targets.length === 0) return; // ← 전쟁 없으면 스폰 안 함
 
-      // 2. 타겟 설정 로직 개선
-      if (targets.length > 0) {
-        // 전쟁 중인 국가가 있다면 그 중 하나를 타겟팅
-        const targetName = targets[Math.floor(Math.random() * targets.length)];
-        targetFeature = filteredFeatures.find(
-          (f: any) => f.properties.name === targetName || f.properties.name === COUNTRY_NAME_MAP[targetName]
-        );
-      } else {
-        // 🚨 디버깅/테스트용: 전쟁 중인 국가가 없으면 무작위 국가 하나를 타겟으로 잡습니다!
-        targetFeature = filteredFeatures[Math.floor(Math.random() * filteredFeatures.length)];
-      }
-
+      const targetName = targets[Math.floor(Math.random() * targets.length)];
+      const targetFeature = filteredFeatures.find(
+        (f: any) => f.properties.name === targetName || f.properties.name === COUNTRY_NAME_MAP[targetName]
+      );
       if (!targetFeature) return;
 
       const targetCentroid = path.centroid(targetFeature);
-      // 중심점을 못 찾으면 에러 방지
       if (!targetCentroid || isNaN(targetCentroid[0]) || isNaN(targetCentroid[1])) return;
 
-      // 3. 출발지 설정 (화면 밖 둥근 궤도 어딘가)
       const startAngle = Math.random() * Math.PI * 2;
-      const spawnRadius = Math.max(width, height) * 0.8; 
+      const spawnRadius = Math.max(width, height) * 0.8;
       const startX = width / 2 + Math.cos(startAngle) * spawnRadius;
       const startY = height / 2 + Math.sin(startAngle) * spawnRadius;
 
-      // 4. 각도 계산 (유닛이 날아가는 방향 바라보기)
       const dx = targetCentroid[0] - startX;
       const dy = targetCentroid[1] - startY;
       const angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
-
       const unitIcon = Math.random() > 0.5 ? '✈️' : '👿';
-      const duration = 2000 + Math.random() * 1000; // 2~3초
+      const duration = 2000 + Math.random() * 1000;
 
-      // 5. 유닛 렌더링 (gMain에 직접 붙입니다)
       const unit = gMain.append('text')
-        .attr('x', startX)
-        .attr('y', startY)
-        .attr('text-anchor', 'middle')
-        .attr('dominant-baseline', 'middle')
-        .attr('font-size', '20px')
-        .attr('class', 'pointer-events-none') // 마우스 이벤트 방해 금지
+        .attr('x', startX).attr('y', startY)
+        .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
+        .attr('font-size', '20px').attr('class', 'pointer-events-none')
         .attr('transform', `rotate(${angle}, ${startX}, ${startY})`)
         .text(unitIcon);
 
-      // 6. 애니메이션 실행
-      unit.transition()
-        .duration(duration)
-        .ease(d3.easeCubicIn)
-        .attr('x', targetCentroid[0])
-        .attr('y', targetCentroid[1])
+      unit.transition().duration(duration).ease(d3.easeCubicIn)
+        .attr('x', targetCentroid[0]).attr('y', targetCentroid[1])
         .attr('transform', `rotate(${angle}, ${targetCentroid[0]}, ${targetCentroid[1]})`)
         .on('end', function() {
-          // 타겟 도달 시 폭발 효과 추가 (옵션)
-          d3.select(this)
-            .text('💥')
+          d3.select(this).text('💥')
             .transition().duration(500)
-            .attr('font-size', '30px')
-            .style('opacity', 0)
-            .remove();
+            .attr('font-size', '30px').style('opacity', 0).remove();
         });
     };
 
-    // 테스트를 위해 1초마다 1대씩 계속 스폰시킵니다.
     const spawnerInterval = setInterval(spawnFlyingUnit, 1000);
-
     return () => {
       clearInterval(spawnerInterval);
-      // 컴포넌트 언마운트 시 날아다니던 애들 싹 지우기
       gMain.selectAll('text').filter(function() {
-        return ['✈️', '👿', '💥'].includes((d3.select(this).text() as string));
+        return ['✈️', '👿', '💥'].includes(d3.select(this).text() as string);
       }).remove();
     };
-  }, [topology, viewMode]);
+  }
+
+  // ── 3D 모드: HTML 오버레이 방식 ──────────────────────────
+  if (viewMode === '3d') {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const spawnUnit = () => {
+      const targets = Array.from(warCountriesRef.current);
+      if (targets.length === 0) return; // ← 전쟁 없으면 스폰 안 함
+
+      const icons = ['✈️', '👿', '🚀', '💀'];
+      const icon = icons[Math.floor(Math.random() * icons.length)];
+
+      const el = document.createElement('div');
+      el.textContent = icon;
+      el.style.cssText = `
+        position: absolute;
+        font-size: 24px;
+        pointer-events: none;
+        z-index: 10;
+        transition: none;
+        filter: drop-shadow(0 0 6px rgba(239,68,68,0.8));
+      `;
+
+      // 화면 가장자리 랜덤 시작점
+      const side = Math.floor(Math.random() * 4);
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      let startX: number, startY: number, endX: number, endY: number;
+
+      // 글로브 중심으로 날아가기
+      const centerX = w / 2;
+      const centerY = h / 2;
+      const offset = 60;
+
+      if (side === 0) { startX = Math.random() * w; startY = -30; }
+      else if (side === 1) { startX = w + 30; startY = Math.random() * h; }
+      else if (side === 2) { startX = Math.random() * w; startY = h + 30; }
+      else { startX = -30; startY = Math.random() * h; }
+
+      endX = centerX + (Math.random() - 0.5) * offset;
+      endY = centerY + (Math.random() - 0.5) * offset;
+
+      const dx = endX - startX;
+      const dy = endY - startY;
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+      el.style.left = startX + 'px';
+      el.style.top = startY + 'px';
+      el.style.transform = `rotate(${angle + 90}deg)`;
+      container.appendChild(el);
+
+      const duration = 2500 + Math.random() * 1000;
+      const start = performance.now();
+
+      const animate = (now: number) => {
+        const progress = Math.min((now - start) / duration, 1);
+        const ease = progress < 0.5
+          ? 2 * progress * progress
+          : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+        el.style.left = (startX + dx * ease) + 'px';
+        el.style.top = (startY + dy * ease) + 'px';
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          // 도착 시 폭발 이모지로 교체 후 페이드아웃
+          el.textContent = '💥';
+          el.style.fontSize = '32px';
+          el.style.transform = 'none';
+          el.style.transition = 'opacity 0.5s';
+          el.style.opacity = '0';
+          setTimeout(() => el.remove(), 500);
+        }
+      };
+      requestAnimationFrame(animate);
+    };
+
+    const spawnerInterval = setInterval(spawnUnit, 1200);
+    return () => {
+      clearInterval(spawnerInterval);
+      // 남아있는 유닛 정리
+      container.querySelectorAll('div[style*="pointer-events: none"]').forEach(el => el.remove());
+    };
+  }
+}, [topology, viewMode]);
   
   // ─── 메인 지도 렌더링 ────────────────────────────────────────────────────
   useEffect(() => {
