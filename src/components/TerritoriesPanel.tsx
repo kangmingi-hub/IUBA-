@@ -19,7 +19,7 @@ interface Props {
  defenses: Record<string, { defense_buildings: number; defense_power: number }>;  // ← 추가
 }
 
-  export default function TerritoriesPanel({ players, countries, onCancel, onCancelBuilding, onCancelDefense, onHealGhosts }: Props) {
+ export default function TerritoriesPanel({ players, countries, onCancel, onCancelBuilding, onCancelDefense, onHealGhosts, defenses }: Props) {
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
   const occupiedCountries = Object.values(countries).filter(c => c.ownerId);
 
