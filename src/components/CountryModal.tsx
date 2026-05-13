@@ -51,7 +51,7 @@ const myPlayer = players.find(p => p.name === resolvedName);
   const isMyCountry = !!myPlayer && ownedCountry?.ownerId === myPlayer.id;
 
   // 건설 가능 여부: admin이거나 내 나라일 때
-  const canBuild = isAdmin || isMyCountry;
+  const canBuild = (isAdmin || isMyCountry) && !ownedCountry?.isDestroyed;
 
   return (
     <AnimatePresence>
