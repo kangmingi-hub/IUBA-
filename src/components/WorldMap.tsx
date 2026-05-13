@@ -576,29 +576,36 @@ const hasDefense = defenseInfo && defenseInfo.defense_buildings > 0;
 
 const laserBurst = () => {
   if (!hasDefense) return;
-  for (let i = 0; i < 6; i++) {
-    const angle = Math.random() * 2 * Math.PI;
-    const length = 15 + Math.random() * 35;
-    const offsetX = (Math.random() - 0.5) * 20;
-    const offsetY = (Math.random() - 0.5) * 20;
+  
+  // 2~3개 레이저를 순차적으로 발사
+  const laserCount = 2 + Math.floor(Math.random() * 2); // 2 or 3개
+  
+  for (let i = 0; i < laserCount; i++) {
+    // 위쪽 방향 (약간 랜덤하게 좌우로 흔들림)
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.6; // 위쪽 ±약 17도
+    const length = 25 + Math.random() * 40;
+    const offsetX = (Math.random() - 0.5) * 10;
+    const offsetY = (Math.random() - 0.5) * 5;
     const x1 = centroid[0] + offsetX;
     const y1 = centroid[1] + offsetY;
     const x2 = x1 + Math.cos(angle) * length;
     const y2 = y1 + Math.sin(angle) * length;
 
-    gPerspective.append('line')
-      .attr('x1', x1).attr('y1', y1)
-      .attr('x2', x1).attr('y2', y1)
-      .attr('stroke', `hsl(${200 + Math.random() * 40}, 100%, 65%)`)
-      .attr('stroke-width', 1 + Math.random() * 2)
-      .attr('stroke-linecap', 'round')
-      .attr('opacity', 1)
-      .attr('class', 'pointer-events-none')
-      .transition().duration(300 + Math.random() * 200)
-      .ease(d3.easeQuadOut)
-      .attr('x2', x2).attr('y2', y2)
-      .attr('opacity', 0)
-      .remove();
+    setTimeout(() => {
+      gPerspective.append('line')
+        .attr('x1', x1).attr('y1', y1)
+        .attr('x2', x1).attr('y2', y1)
+        .attr('stroke', `hsl(${200 + Math.random() * 40}, 100%, 65%)`)
+        .attr('stroke-width', 1.5 + Math.random() * 2)
+        .attr('stroke-linecap', 'round')
+        .attr('opacity', 0.9)
+        .attr('class', 'pointer-events-none')
+        .transition().duration(500 + Math.random() * 300) // 파티클보다 느리게
+        .ease(d3.easeQuadOut)
+        .attr('x2', x2).attr('y2', y2)
+        .attr('opacity', 0)
+        .remove();
+    }, i * (120 + Math.random() * 100)); // 순차적으로 120~220ms 간격
   }
 };
 
