@@ -207,6 +207,7 @@ const occupiedCountries = Object.values(gameState.countries as Record<string, Co
                 onCancelBuilding={cancelBuilding}
                 onCancelDefense={cancelDefense}
                 onHealGhosts={healGhostData}
+                defenses={defenses}
               />
             )}
             {activeTab === 'members' && currentUser?.role === 'admin' && (
