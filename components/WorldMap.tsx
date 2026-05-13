@@ -137,7 +137,19 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
         .attr('fill', 'url(#globe-gradient)')
         .attr('opacity', 0.4);
 
+      // defs 블록 (3D 모드 defs와 별개로, 항상 추가)
       const defs = svg.append('defs');
+      
+      // 별빛 glow 필터
+      const starGlow = defs.append('filter').attr('id', 'star-glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
+      starGlow.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur');
+      starGlow.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).enter().append('feMergeNode').attr('in', d => d);
+      
+      // 시너지 연결선 glow 필터
+      const lineGlow = defs.append('filter').attr('id', 'line-glow').attr('x', '-20%').attr('y', '-20%').attr('width', '140%').attr('height', '140%');
+      lineGlow.append('feGaussianBlur').attr('stdDeviation', '2').attr('result', 'blur');
+      lineGlow.append('feMerge').selectAll('feMergeNode').data(['blur', 'SourceGraphic']).enter().append('feMergeNode').attr('in', d => d);
+      
       const grad = defs.append('radialGradient').attr('id', 'globe-gradient');
       grad.append('stop').attr('offset', '70%').attr('stop-color', '#f1f5f9').attr('stop-opacity', 0);
       grad.append('stop').attr('offset', '100%').attr('stop-color', '#3b82f6').attr('stop-opacity', 0.2);
