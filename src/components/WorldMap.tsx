@@ -577,35 +577,40 @@ const hasDefense = defenseInfo && defenseInfo.defense_buildings > 0;
 const laserBurst = () => {
   if (!hasDefense) return;
   
-  // 2~3개 레이저를 순차적으로 발사
-  const laserCount = 2 + Math.floor(Math.random() * 2); // 2 or 3개
+  const laserCount = 2 + Math.floor(Math.random() * 2); // 2~3개
   
   for (let i = 0; i < laserCount; i++) {
-    // 위쪽 방향 (약간 랜덤하게 좌우로 흔들림)
     const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.6; // 위쪽 ±약 17도
-    const length = 25 + Math.random() * 40;
-    const offsetX = (Math.random() - 0.5) * 10;
-    const offsetY = (Math.random() - 0.5) * 5;
-    const x1 = centroid[0] + offsetX;
-    const y1 = centroid[1] + offsetY;
+    const length = 30 + Math.random() * 45;
+    
+    // 시작점 랜덤하게 흔들기
+    const startOffsetX = (Math.random() - 0.5) * 20;
+    const startOffsetY = (Math.random() - 0.5) * 20;
+    const x1 = centroid[0] + startOffsetX;
+    const y1 = centroid[1] + startOffsetY;
     const x2 = x1 + Math.cos(angle) * length;
     const y2 = y1 + Math.sin(angle) * length;
 
     setTimeout(() => {
-      gPerspective.append('line')
+      const laser = gPerspective.append('line')
         .attr('x1', x1).attr('y1', y1)
-        .attr('x2', x1).attr('y2', y1)
-        .attr('stroke', `hsl(${200 + Math.random() * 40}, 100%, 65%)`)
-        .attr('stroke-width', 1.5 + Math.random() * 2)
+        .attr('x2', x2).attr('y2', y2) // 처음부터 끝점까지 바로 그려짐
+        .attr('stroke', '#00ccff') // 진한 파란색 고정
+        .attr('stroke-width', 2 + Math.random() * 1.5)
         .attr('stroke-linecap', 'round')
-        .attr('opacity', 0.9)
-        .attr('class', 'pointer-events-none')
-        .transition().duration(500 + Math.random() * 300) // 파티클보다 느리게
-        .ease(d3.easeQuadOut)
-        .attr('x2', x2).attr('y2', y2)
+        .attr('opacity', 1)
+        .attr('filter', 'drop-shadow(0 0 3px #00aaff)') // 글로우 효과
+        .attr('class', 'pointer-events-none');
+
+      // 선이 바로 나타났다가 서서히 사라짐
+      laser.transition()
+        .delay(80 + Math.random() * 80) // 잠깐 유지
+        .duration(400 + Math.random() * 200)
+        .ease(d3.easeQuadIn)
         .attr('opacity', 0)
         .remove();
-    }, i * (120 + Math.random() * 100)); // 순차적으로 120~220ms 간격
+
+    }, i * (150 + Math.random() * 100)); // 순차적으로
   }
 };
 
