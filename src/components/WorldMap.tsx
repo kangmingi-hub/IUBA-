@@ -522,9 +522,9 @@ useEffect(() => {
   
   
   // 파티클 전용 레이어 - 없으면 새로 만들고, 있으면 재사용
-  let gPerspective = svg.select<SVGGElement>('.particle-layer');
+  let gPerspective = gMain.select<SVGGElement>('.particle-layer');
   if (gPerspective.empty()) {
-    gPerspective = svg.append('g').attr('class', 'particle-layer');
+    gPerspective = gMain.append('g').attr('class', 'particle-layer');
   }
 
   const width = svgRef.current.clientWidth;
@@ -627,7 +627,6 @@ const intervalId = setInterval(() => {
   if (hasDefense) laserBurst();
 }, 2000);
     
-    burst();
     activeWarIntervalsRef.current.set(warEvent.id, intervalId);
 
     setTimeout(() => {
