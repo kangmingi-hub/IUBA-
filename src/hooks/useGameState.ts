@@ -486,6 +486,7 @@ await supabase.from('building_purchases').insert({
   club_name: player.name,
   building_name: nextTier.name,
   price_paid: nextTier.cost,
+  country_name: country.name,
   purchased_at: new Date().toISOString()
 });
 
