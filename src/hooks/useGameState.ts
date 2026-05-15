@@ -7,18 +7,6 @@ import { TEAM_ALIASES } from '../constants';
 const STORAGE_KEY = 'kingdom_conquerors_save';
 const AUTH_KEY = 'kingdom_conquerors_auth';
 
-const getIndividualClubNames = (displayName: string, mergeGroups: { display_name: string; team_names: string[] }[]) => {
-  const mergeGroup = mergeGroups.find(g => g.display_name === displayName);
-  if (mergeGroup) return mergeGroup.team_names;
-
-  const aliasMembers = Object.entries(TEAM_ALIASES)
-    .filter(([_, merged]) => merged === displayName)
-    .map(([original]) => original);
-  if (aliasMembers.length > 0) return aliasMembers;
-
-  return [displayName];
-};
-
 export function useGameState() {
   const [gameState, setGameState] = useState<GameState>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -463,16 +451,12 @@ useEffect(() => {
     });
 
     // ✅ 추가: country_purchases에 기록 → 다른 기기 포인트 차감 동기화
-    const clubNames = getIndividualClubNames(player.name, mergeGroups);
-const splitPrice = Math.round(price / clubNames.length);
-for (const clubName of clubNames) {
-  await supabase.from('country_purchases').insert({
-    club_name: clubName,
-    country_name: countryName,
-    price_paid: splitPrice,
-    purchased_at: new Date().toISOString()
-  });
-}
+await supabase.from('country_purchases').insert({
+  club_name: player.name,
+  country_name: countryName,
+  price_paid: price,
+  purchased_at: new Date().toISOString()
+});
 
     setGameState(prev => ({
       ...prev,
@@ -498,16 +482,12 @@ for (const clubName of clubNames) {
       .eq('country_id', countryId);
 
     // ✅ 추가: building_purchases에 기록 → 다른 기기 포인트 차감 동기화
-  const clubNames = getIndividualClubNames(player.name, mergeGroups);
-const splitCost = Math.round(nextTier.cost / clubNames.length);
-for (const clubName of clubNames) {
-  await supabase.from('building_purchases').insert({
-    club_name: clubName,
-    building_name: nextTier.name,
-    price_paid: splitCost,
-    purchased_at: new Date().toISOString()
-  });
-}
+await supabase.from('building_purchases').insert({
+  club_name: player.name,
+  building_name: nextTier.name,
+  price_paid: nextTier.cost,
+  purchased_at: new Date().toISOString()
+});
 
     setGameState(prev => ({
       ...prev,
