@@ -563,7 +563,7 @@ await supabase.from('building_purchases').insert({
       country_id: countryId,
       country_name: country.name,
       owner_id: player.id,
-      defense_power: 60,
+      defense_power: 30,
       defense_buildings: 1
     });
   }
