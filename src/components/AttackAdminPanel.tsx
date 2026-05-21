@@ -3,9 +3,6 @@ import { motion } from 'motion/react';
 import { Swords, Shield, Clock, Zap, Trash2, RotateCcw, CheckSquare, Square } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-const DEFENSE_BUILDING_COST = 50;
-const DEFENSE_POWER_PER_BUILDING = 10;
-
 interface AttackSchedule {
   id: string;
   attack_time: string;
