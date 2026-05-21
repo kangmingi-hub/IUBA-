@@ -24,6 +24,11 @@ import { twMerge } from 'tailwind-merge';
 import BackgroundMusic from './components/BackgroundMusic';
 import OccupancyBar from './components/OccupancyBar';
 import MergesPanel from './components/MergesPanel';
+import AttackWarning from './components/AttackWarning';
+import DefensePanel from './components/DefensePanel';
+import AttackAdminPanel from './components/AttackAdminPanel';
+import { useEffect, useState } from 'react';  // useEffect 이미 있으면 패스
+import { supabase } from './lib/supabase';
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 
@@ -34,16 +39,33 @@ export default function App() {
     fetchClubPoints, handleLogin, handleLogout,
     handleAddMember, handleDeleteMember, handleAdminSubmit,
     handleCancelOccupation, healGhostData, buyCountry, buildInCountry, resetGame,
-    cancelBuilding, resetManualPoints, handleChangePassword, handleColorChange,
-    mergeGroups, handleAddMergeGroup, handleDeleteMergeGroup,
+    cancelBuilding, resetManualPoints, handleChangePassword, handleColorChange, buildDefense,
+    mergeGroups, handleAddMergeGroup, handleDeleteMergeGroup, restoreCountry, cancelDefense,
   } = useGameState();
 
   const [selectedCountry, setSelectedCountry] = useState<{ id: string; name: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'map' | 'admin' | 'logs' | 'members' | 'territories'>('map');
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [defenses, setDefenses] = useState<Record<string, { defense_buildings: number; defense_power: number }>>({});
 
-  const occupiedCountries = Object.values(gameState.countries as Record<string, CountryState>).filter(c => c.ownerId);
+useEffect(() => {
+  const fetchDefenses = async () => {
+    const { data } = await supabase.from('country_defenses').select('*');
+    if (data) {
+      const map: Record<string, { defense_buildings: number; defense_power: number }> = {};
+      data.forEach((d: any) => { map[d.country_id] = d; map[d.country_name] = d; });
+      setDefenses(map);
+    }
+  };
+  fetchDefenses();
+  const channel = supabase.channel('defenses_map')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'country_defenses' }, fetchDefenses)
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}, []);
 
+const occupiedCountries = Object.values(gameState.countries as Record<string, CountryState>).filter(c => c.ownerId)
+  
   return (
     <div className="min-h-screen text-white font-sans p-4 md:p-8" style={{ position: 'relative' }}>
       <HologramBackground /> 
@@ -129,28 +151,35 @@ export default function App() {
         </div>
       </header>
 
+<AttackWarning players={gameState.players} />
+      
       <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-10 gap-4">
-      <section className="lg:col-span-3 space-y-6">
-          <Leaderboard
-            clubPoints={clubPoints}
-            players={gameState.players}
-            countries={gameState.countries}
-            isSyncing={isSyncing}
-            onRefresh={fetchClubPoints}
-            onReset={resetGame}
-            onResetManual={resetManualPoints}
-            currentUser={currentUser}
-          />
-        </section>
+          <section className="lg:col-span-3 flex flex-col gap-0">
+  <Leaderboard
+    clubPoints={clubPoints}
+    players={gameState.players}
+    countries={gameState.countries}
+    isSyncing={isSyncing}
+    onRefresh={fetchClubPoints}
+    onReset={resetGame}
+    onResetManual={resetManualPoints}
+    currentUser={currentUser}
+  />
+  <DefensePanel
+    players={gameState.players}
+    countries={gameState.countries}
+  />
+</section>
 
         <section className="lg:col-span-7 min-h-[600px] flex flex-col">
           <AnimatePresence mode="wait">
             {activeTab === 'map' && (
-              <div className="flex-1 flex flex-col gap-3" style={{ touchAction: 'none' }}>
+              <div className="flex-1 flex flex-col gap-3 relative" style={{ touchAction: 'none' }}>
                 <WorldMap
                   countries={gameState.countries}
                   players={gameState.players}
                   onCountryClick={(id, name) => setSelectedCountry({ id, name })}
+                  defenses={defenses}
                 />
                 <OccupancyBar
                   countries={gameState.countries}
@@ -159,21 +188,26 @@ export default function App() {
               </div>
             )}
             {activeTab === 'admin' && currentUser?.role === 'admin' && (
-              <AdminPanel
-                players={gameState.players}
-                onSubmit={handleAdminSubmit}
-                startDate={startDate}
-                onStartDateChange={setStartDate}
-                onRefresh={fetchClubPoints}
-              />
-            )}
+  <div className="space-y-4">
+    <AdminPanel
+      players={gameState.players}
+      onSubmit={handleAdminSubmit}
+      startDate={startDate}
+      onStartDateChange={setStartDate}
+      onRefresh={fetchClubPoints}
+    />
+    <AttackAdminPanel players={gameState.players} countries={gameState.countries} />
+  </div>
+)}
             {activeTab === 'territories' && currentUser?.role === 'admin' && (
               <TerritoriesPanel
                 players={gameState.players}
                 countries={gameState.countries}
                 onCancel={handleCancelOccupation}
                 onCancelBuilding={cancelBuilding}
+                onCancelDefense={cancelDefense}
                 onHealGhosts={healGhostData}
+                defenses={defenses}
               />
             )}
             {activeTab === 'members' && currentUser?.role === 'admin' && (
@@ -209,6 +243,8 @@ export default function App() {
         onClose={() => setSelectedCountry(null)}
         onBuy={buyCountry}
         onBuild={buildInCountry}
+        onBuildDefense={buildDefense}
+        onRestore={(countryId) => restoreCountry(countryId, currentUser?.role === 'admin')}
         currentUser={currentUser}
       />
 

@@ -94,7 +94,8 @@ const fetchMergeGroups = async () => {
             id: row.country_id,
             name: row.country_name,
             ownerId: row.owner_id,
-            buildings: row.buildings || 0
+            buildings: row.buildings || 0,
+            isDestroyed: row.is_destroyed || false 
           };
         });
         setGameState(prev => ({ ...prev, countries }));
@@ -198,6 +199,21 @@ useEffect(() => {
     const channel = supabase
       .channel('realtime_sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'country_occupations' }, () => { fetchOccupations(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attack_results' }, async (payload: any) => {
+            fetchOccupations();
+            const countryId = payload.new?.country_id || payload.new?.country_name;
+            if (countryId) {
+              setTimeout(async () => {
+                await supabase.from('country_defenses')
+                  .delete()
+                  .eq('country_id', countryId);
+                // country_name으로도 한번 더 시도
+                await supabase.from('country_defenses')
+                  .delete()
+                  .eq('country_name', payload.new?.country_name);
+              }, 31000); // 31초
+            }
+          })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => { fetchUsers(); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, (payload: any) => {
         if (payload.new?.key === 'start_date') setStartDate(payload.new.value);
@@ -447,7 +463,8 @@ useEffect(() => {
       country_name: countryName,
       owner_id: player.id,
       owner_name: player.name,
-      buildings: 0
+      buildings: 0,
+      is_destroyed: false
     });
 
     // ✅ 추가: country_purchases에 기록 → 다른 기기 포인트 차감 동기화
@@ -461,7 +478,7 @@ await supabase.from('country_purchases').insert({
     setGameState(prev => ({
       ...prev,
       players: prev.players.map(p => p.id === playerId ? { ...p, gold: p.gold - price } : p),
-      countries: { ...prev.countries, [countryId]: { id: countryId, name: countryName, ownerId: player.id, buildings: 0 } }
+      countries: { ...prev.countries, [countryId]: { id: countryId, name: countryName, ownerId: player.id, buildings: 0, isDestroyed: false } }
     }));
     addLog(`${player.name}님이 ${countryName}를 ${price}G에 점령했습니다!`, 'purchase');
   };
@@ -474,7 +491,7 @@ await supabase.from('country_purchases').insert({
     const nextTier = tiers[country.buildings];
     const player = gameState.players.find(p => p.id === country.ownerId);
     if (!player || player.buildingPower < nextTier.cost) return;
-
+    
     const newBuildings = country.buildings + 1;
 
     await supabase.from('country_occupations')
@@ -516,6 +533,125 @@ await supabase.from('building_purchases').insert({
     }
   };
 
+  const buildDefense = async (countryId: string) => {
+  const country = gameState.countries[countryId];
+  if (!country?.ownerId) return;
+  const player = gameState.players.find(p => p.id === country.ownerId);
+ const DEFENSE_COST = 15;
+if (!player || player.buildingPower < DEFENSE_COST) {
+  alert('가스가 부족합니다! (방어 건물: 15 GAS)');
+  return;
+}
+
+await supabase.from('building_purchases').insert({
+  club_name: player.name,
+  building_name: '방어 건물',
+  price_paid: DEFENSE_COST,
+  purchased_at: new Date().toISOString()
+});
+
+  // country_defenses 테이블 업서트
+  const { data: existing } = await supabase
+    .from('country_defenses')
+    .select('*')
+    .eq('country_id', countryId)
+    .single();
+
+  if (existing) {
+    await supabase.from('country_defenses').update({
+      defense_buildings: existing.defense_buildings + 1,
+      defense_power: existing.defense_power + 30
+    }).eq('country_id', countryId);
+  } else {
+    await supabase.from('country_defenses').insert({
+      country_id: countryId,
+      country_name: country.name,
+      owner_id: player.id,
+      defense_power: 30,
+      defense_buildings: 1
+    });
+  }
+
+  addLog(`${player.name}님이 ${country.name}에 방어 건물을 건설했습니다! (15 GAS)`, 'construction');
+  await fetchClubPoints();
+};
+
+// useGameState.ts
+const restoreCountry = async (countryId: string, isAdmin?: boolean) => {
+  const country = gameState.countries[countryId];
+  if (!country?.ownerId) return;
+  const player = gameState.players.find(p => p.id === country.ownerId);
+  const RESTORE_COST = 30;
+
+  if (!isAdmin) {
+    if (!player || player.gold < RESTORE_COST) {
+      alert('미네랄이 부족합니다! (복구 비용: 30 MINERAL)');
+      return;
+    }
+    await supabase.from('country_purchases').insert({
+      club_name: player.name,
+      country_name: country.name,
+      price_paid: RESTORE_COST,
+      purchased_at: new Date().toISOString()
+    });
+  }
+
+  await supabase.from('country_occupations')
+    .update({ is_destroyed: false })
+    .eq('country_id', countryId);
+
+  setGameState(prev => ({
+    ...prev,
+    countries: {
+      ...prev.countries,
+      [countryId]: { ...country, isDestroyed: false }
+    }
+  }));
+
+  addLog(`${isAdmin ? '[어드민] ' : ''}${player?.name}님의 ${country.name} 복구 완료!`, 'construction');
+  if (!isAdmin) await fetchClubPoints();
+};
+
+  const cancelDefense = async (countryId: string) => {
+  const country = gameState.countries[countryId];
+  if (!country?.ownerId) return;
+  const player = gameState.players.find(p => p.id === country.ownerId);
+
+  const { data: existing } = await supabase
+    .from('country_defenses')
+    .select('*')
+    .eq('country_id', countryId)
+    .single();
+
+  if (!existing || existing.defense_buildings <= 0) {
+    alert('방어 건물이 없습니다!');
+    return;
+  }
+
+  const newBuildings = existing.defense_buildings - 1;
+  const newPower = existing.defense_power - 30;
+
+  if (newBuildings <= 0) {
+    await supabase.from('country_defenses').delete().eq('country_id', countryId);
+  } else {
+    await supabase.from('country_defenses').update({
+      defense_buildings: newBuildings,
+      defense_power: newPower
+    }).eq('country_id', countryId);
+  }
+
+  // 미네랄 환불
+ await supabase.from('building_purchases').insert({
+  club_name: player?.name,
+  building_name: '방어 건물',
+  price_paid: -15,
+  purchased_at: new Date().toISOString()
+});
+
+addLog(`관리자가 ${player?.name}의 ${country.name} 방어 건물을 취소했습니다. (15 GAS 환불)`, 'construction');
+  await fetchClubPoints();
+};
+  
   const resetManualPoints = async () => {
     if (window.confirm('관리자가 수동으로 추가한 점수를 초기화하고 원본 점수로 되돌리시겠습니까?')) {
       await fetchClubPoints();
@@ -565,7 +701,7 @@ const handleDeleteMergeGroup = async (id: string) => {
     fetchClubPoints, handleLogin, handleLogout,
     handleAddMember, handleDeleteMember, handleAdminSubmit,
     handleCancelOccupation, healGhostData, buyCountry, buildInCountry, resetGame,
-    cancelBuilding, resetManualPoints, handleColorChange, handleChangePassword,
-    mergeGroups, handleAddMergeGroup, handleDeleteMergeGroup,
+    cancelBuilding, resetManualPoints, handleColorChange, handleChangePassword, buildDefense,
+    mergeGroups, handleAddMergeGroup, handleDeleteMergeGroup, restoreCountry, cancelDefense,
   };
 }

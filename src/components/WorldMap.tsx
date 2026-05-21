@@ -9,11 +9,14 @@ import * as topojson from 'topojson-client';
 import { CountryState, Player } from '../types';
 import { COUNTRY_PRICES, DEFAULT_COUNTRY_PRICE, BUILDING_TIERS, CLUB_IMAGES, BUILDING_IMAGES, COUNTRY_NAME_MAP, getBuildingTiers } from '../constants';
 import { Globe as GlobeIcon, ZoomIn, ArrowLeft, RefreshCcw } from 'lucide-react';
+import defenseIcon from '../../public/defense-tower.png';
+import { supabase } from '../lib/supabase';
 
 interface WorldMapProps {
   countries: Record<string, CountryState>;
   players: Player[];
   onCountryClick: (countryId: string, countryName: string) => void;
+  defenses?: Record<string, { defense_buildings: number; defense_power: number }>;
 }
 
 type ViewMode = '3d' | '2d';
@@ -29,7 +32,7 @@ const CONTINENTS: Record<Continent, { name: string; center: [number, number]; sc
   oceania:      { name: '오세아니아', center: [148, -27], scale: 4.5 },
 };
 
-export default function WorldMap({ countries, players, onCountryClick }: WorldMapProps) {
+export default function WorldMap({ countries, players, onCountryClick, defenses = {} }: WorldMapProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [topology, setTopology] = useState<any>(null);
@@ -40,11 +43,76 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
   const [isRotating, setIsRotating] = useState(true);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>(null);
   const isDraggingRef = useRef(false);
+  const attackingCountriesRef = useRef<Set<string>>(new Set());
+  const warCountriesRef = useRef<Set<string>>(new Set());
+  const activeWarIntervalsRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+  const [warEvents, setWarEvents] = useState<{
+    id: string;
+    country_name: string;
+    result: 'defended' | 'conquered';
+  }[]>([]);
 
   useEffect(() => {
     fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
       .then(res => res.json())
       .then(data => setTopology(data));
+  }, []);
+
+  useEffect(() => {
+    const shownIds = new Set<string>();
+    const channel = supabase.channel('war_events_map')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'attack_results'
+      }, (payload) => {
+        const e = payload.new as any;
+        if (!shownIds.has(e.id)) {
+          shownIds.add(e.id);
+          setWarEvents(prev => [...prev, { id: e.id, country_name: e.country_name, result: e.result }]);
+          setTimeout(() => {
+            setWarEvents(prev => prev.filter(w => w.id !== e.id));
+          }, 30000);
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  useEffect(() => {
+    const fetchAttackSchedules = async () => {
+      const { data } = await supabase.from('attack_schedules').select('*').eq('status', 'scheduled');
+      if (!data) return;
+
+      const nowTime = Date.now();
+      const warning = new Set<string>();
+      const war = new Set<string>();
+
+      data.forEach((s: any) => {
+        const attackTime = new Date(s.attack_time).getTime();
+        if (attackTime <= nowTime) {
+          war.add(s.target_country_name);
+        } else {
+          warning.add(s.target_country_name);
+        }
+      });
+
+      attackingCountriesRef.current = warning;
+      warCountriesRef.current = war;
+    };
+
+    fetchAttackSchedules();
+
+    const channel = supabase.channel('attack_schedules_map')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attack_schedules' }, fetchAttackSchedules)
+      .subscribe();
+
+    const interval = setInterval(fetchAttackSchedules, 1000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -58,7 +126,7 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
       lastTouch = e.touches[0];
     };
 
-   const onTouchMove = (e: TouchEvent) => {
+    const onTouchMove = (e: TouchEvent) => {
       if (!lastTouch || viewMode !== '3d') return;
       if (isDraggingRef.current) {
         e.preventDefault();
@@ -91,6 +159,8 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
     };
   }, [viewMode, zoomLevel]);
 
+
+  // ─── 메인 지도 렌더링 ────────────────────────────────────────────────────
   useEffect(() => {
     if (!topology || !svgRef.current) return;
 
@@ -223,10 +293,10 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
 
     if (viewMode === '2d') {
       const sortedFeatures = [...filteredFeatures].sort((a: any, b: any) => {
-      const yA = path.centroid(a)?.[1] ?? 0;
-      const yB = path.centroid(b)?.[1] ?? 0;
-      return yA - yB;
-    });
+        const yA = path.centroid(a)?.[1] ?? 0;
+        const yB = path.centroid(b)?.[1] ?? 0;
+        return yA - yB;
+      });
 
       sortedFeatures.forEach((feature: any) => {
         const countryName = feature.properties.name;
@@ -253,7 +323,10 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
 
         countryG.append('path').datum(feature).attr('d', path as any)
           .attr('class', 'country-top cursor-pointer')
-          .attr('fill', isOwned ? players.find(p => p.id === state!.ownerId)?.color || '#e2e8f0' : '#e2e8f0')
+          .attr('fill', () => {
+            if (!isOwned) return '#e2e8f0';
+            return players.find(p => p.id === state!.ownerId)?.color || '#e2e8f0';
+          })
           .attr('stroke', '#94a3b8').attr('stroke-width', '0.5').attr('vector-effect', 'non-scaling-stroke')
           .on('click', (event, d: any) => onCountryClick(d.properties.name, d.properties.name))
           .on('mouseover', function(event, d: any) {
@@ -265,6 +338,30 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
             handleMouseOut();
             d3.select(this).attr('fill-opacity', 1).attr('stroke', '#94a3b8').attr('stroke-width', '0.5').attr('vector-effect', 'non-scaling-stroke');
           });
+
+        // 경고 테두리 (공격 예정)
+        if (attackingCountriesRef.current.has(countryName)) {
+          countryG.append('path').datum(feature).attr('d', path as any)
+            .attr('fill', 'none')
+            .attr('stroke', '#ef4444')
+            .attr('stroke-width', '3')
+            .attr('vector-effect', 'non-scaling-stroke')
+            .attr('class', 'pointer-events-none warning-border');
+        }
+
+        // 전쟁 오버레이 (공격 시점)
+        if (warCountriesRef.current.has(countryName)) {
+          countryG.append('path').datum(feature).attr('d', path as any)
+            .attr('fill', 'rgba(239, 68, 68, 0.4)')
+            .attr('class', 'pointer-events-none');
+        }
+
+        // isDestroyed 오버레이
+        if (state?.isDestroyed) {
+          countryG.append('path').datum(feature).attr('d', path as any)
+            .attr('fill', 'rgba(0, 0, 0, 0.55)')
+            .attr('class', 'pointer-events-none');
+        }
 
         if (isOwned) {
           countryG.attr('opacity', 0).attr('transform', 'translate(0, 0)')
@@ -279,9 +376,11 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
       gCountries.selectAll('path').data(filteredFeatures).enter().append('path').attr('d', path as any)
         .attr('class', 'country-top cursor-pointer')
         .attr('stroke', '#94a3b8').attr('stroke-width', 0.5).attr('vector-effect', 'non-scaling-stroke')
-        .attr('fill', (d: any) => countries[d.properties.name]?.ownerId
-          ? players.find(p => p.id === countries[d.properties.name].ownerId)?.color || '#CBD5E1'
-          : '#CBD5E1')
+        .attr('fill', (d: any) => {
+          const state = countries[d.properties.name];
+          if (!state?.ownerId) return '#CBD5E1';
+          return players.find(p => p.id === state.ownerId)?.color || '#CBD5E1';
+        })
         .on('click', (event, d: any) => onCountryClick(d.properties.name, d.properties.name))
         .on('mouseover', function(event, d: any) {
           handleMouseOver(event, d);
@@ -292,6 +391,15 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
           handleMouseOut();
           d3.select(this).attr('fill-opacity', 1).attr('stroke', '#94a3b8').attr('stroke-width', '0.5').attr('vector-effect', 'non-scaling-stroke');
         });
+      gCountries.selectAll('.destroyed-overlay')
+        .data(filteredFeatures.filter((f: any) => {
+          const state = countries[f.properties.name];
+          return state?.isDestroyed;
+        }))
+        .enter().append('path')
+        .attr('d', path as any)
+        .attr('fill', 'rgba(0, 0, 0, 0.55)')
+        .attr('class', 'pointer-events-none');
     }
 
     if (viewMode === '2d') {
@@ -303,7 +411,7 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
         const feature = filteredFeatures.find((f: any) =>
           f.properties.name === mappedName || f.properties.name === state.name
         );
-       if (!feature) return;
+        if (!feature) return;
 
         const getMainFeature = (feature: any) => {
           if (feature.geometry.type === 'MultiPolygon') {
@@ -320,7 +428,7 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
           }
           return feature;
         };
-        
+
         const mainFeature = getMainFeature(feature);
         const centroid = path.centroid(mainFeature);
         if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) return;
@@ -332,39 +440,196 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
         const scaleFactor = Math.min(width, height) / (isMobile ? 1100 : 600);
         const imageSize = Math.min(Math.max(countryArea * 0.35 * scaleFactor, isMobile ? 5 : 8), (isMobile ? 18 : 30) * scaleFactor);
         const hasBuilding = state.buildings > 0;
-        
-        // 지면이 떠오르는 높이 계산 (countryG의 targetDepth와 동일한 로직)
+
         const isOwned = !!state.ownerId;
         const targetDepth = isOwned ? (2 + state.buildings * 1) : 0;
-        
+
         const finalCharSize = hasBuilding ? imageSize * 0.65 : imageSize;
         const charX = hasBuilding ? centroid[0] - imageSize * 0.15 : centroid[0];
-        // targetDepth만큼 y좌표를 위로 올림
         const charY = hasBuilding
           ? centroid[1] - imageSize * 0.3 - targetDepth
           : centroid[1] - imageSize * 0.5 - targetDepth;
-        
+
         if (hasBuilding) {
           const buildingImg = BUILDING_IMAGES[state.buildings];
           const buildingSize = imageSize * 1.0;
           gPerspective.append('image')
             .attr('href', buildingImg)
             .attr('x', centroid[0] + imageSize * 0.15 - buildingSize / 2)
-            // 건물도 targetDepth만큼 위로
             .attr('y', centroid[1] - imageSize * 0.5 - buildingSize / 2 - targetDepth)
             .attr('width', buildingSize).attr('height', buildingSize)
             .attr('class', 'pointer-events-none');
         }
+
         gPerspective.append('image')
           .attr('href', CLUB_IMAGES[player.name] || player.characterUrl)
           .attr('x', charX - finalCharSize / 2).attr('y', charY - finalCharSize / 2)
           .attr('width', finalCharSize).attr('height', finalCharSize)
           .attr('class', 'pointer-events-none');
+
+        // 방어 건물 이미지 추가
+        const defenseInfo = defenses[state.id] || defenses[state.name];
+        if (defenseInfo && defenseInfo.defense_buildings > 0) {
+          const defSize = imageSize * 0.6;
+          gPerspective.append('image')
+            .attr('href', defenseIcon)
+            .attr('x', centroid[0] - imageSize * 0.5 - defSize / 2)
+            .attr('y', centroid[1] - imageSize * 0.3 - defSize / 2 - targetDepth)
+            .attr('width', defSize).attr('height', defSize)
+            .attr('class', 'pointer-events-none')
+            .attr('opacity', 0.85)
+            .attr('style', 'filter: hue-rotate(120deg)');
+        }
+
+
+        // 이미지들 다 그린 후 맨 위에 오버레이
+        if (state.isDestroyed) {
+          gPerspective.append('path').datum(feature).attr('d', path as any)
+            .attr('fill', 'rgba(0, 0, 0, 0.55)')
+            .attr('class', 'pointer-events-none')
+            .attr('transform', `translate(0, -${targetDepth})`);
+        }
       });
     }
 
     return () => { tooltip.remove(); };
   }, [topology, countries, players, viewMode, rotation, zoomLevel]);
+
+useEffect(() => {
+  if (!topology || !svgRef.current || viewMode !== '2d') return;
+  const svg = d3.select(svgRef.current);
+
+  // gMain 안에 붙여야 줌/패닝 따라움직임
+  const gMain = svg.select<SVGGElement>('.main-group');
+  if (gMain.empty()) return;
+  
+  
+  // 파티클 전용 레이어 - 없으면 새로 만들고, 있으면 재사용
+  let gPerspective = gMain.select<SVGGElement>('.particle-layer');
+  if (gPerspective.empty()) {
+    gPerspective = gMain.append('g').attr('class', 'particle-layer');
+  }
+
+  const width = svgRef.current.clientWidth;
+  const height = svgRef.current.clientHeight;
+  const projection = d3.geoMercator()
+    .scale(width / 6.5)
+    .translate([width / 2, height / 1.8]);
+  const path = d3.geoPath().projection(projection);
+  const features = topojson.feature(topology, topology.objects.countries) as any;
+  const filteredFeatures = features.features.filter(
+    (f: any) => f.id !== '010' && f.properties.name !== 'Antarctica'
+  );
+
+  warEvents.forEach((warEvent) => {
+    if (activeWarIntervalsRef.current.has(warEvent.id)) return;
+
+    const mappedName = COUNTRY_NAME_MAP[warEvent.country_name] || warEvent.country_name;
+    const feature = filteredFeatures.find((f: any) =>
+      f.properties.name === mappedName || f.properties.name === warEvent.country_name
+    );
+    if (!feature) return;
+
+    const centroid = path.centroid(feature);
+    if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) return;
+
+    const isConquered = warEvent.result === 'conquered';
+
+    const burst = () => {
+      for (let i = 0; i < 30; i++) {
+        const angle = Math.random() * 2 * Math.PI;
+        const distance = 10 + Math.random() * 40;
+        const size = 2 + Math.random() * 4;
+        const duration = 800 + Math.random() * 600;
+        const hue = Math.random() * 30;
+        gPerspective.append('circle')  // ← gPerspective 대신 gPerspective
+          .attr('cx', centroid[0]).attr('cy', centroid[1])
+          .attr('r', size)
+          .attr('fill', `hsl(${hue}, 100%, 60%)`)
+          .attr('opacity', 1)
+          .attr('class', 'pointer-events-none')
+          .transition().duration(duration).ease(d3.easeQuadOut)
+          .attr('cx', centroid[0] + Math.cos(angle) * distance)
+          .attr('cy', centroid[1] + Math.sin(angle) * distance)
+          .attr('opacity', 0).attr('r', 0).remove();
+      }
+      gPerspective.append('circle')
+        .attr('cx', centroid[0]).attr('cy', centroid[1])
+        .attr('r', 5).attr('fill', 'none')
+        .attr('stroke', '#ef4444')
+        .attr('stroke-width', 3).attr('opacity', 1)
+        .attr('class', 'pointer-events-none')
+        .transition().duration(600).ease(d3.easeQuadOut)
+        .attr('r', 30).attr('opacity', 0).remove();
+      gPerspective.append('text')
+        .attr('x', centroid[0]).attr('y', centroid[1] - 10)
+        .attr('text-anchor', 'middle').attr('font-size', 16)
+        .attr('class', 'pointer-events-none')
+        .text(isConquered ? '💥' : '🛡️')
+        .transition().duration(2000).ease(d3.easeQuadOut)
+        .attr('y', centroid[1] - 40).attr('opacity', 0).remove();
+    };
+
+// 방어 건물 있으면 파란 레이저 추가
+const defenseInfo = defenses[warEvent.country_name];
+const hasDefense = defenseInfo && defenseInfo.defense_buildings > 0;
+
+const laserBurst = () => {
+  if (!hasDefense) return;
+  
+  const laserCount = 2 + Math.floor(Math.random() * 2); // 2~3개
+  
+  for (let i = 0; i < laserCount; i++) {
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.6; // 위쪽 ±약 17도
+    const length = 15 + Math.random() * 20; 
+    
+    // 시작점 랜덤하게 흔들기
+    const startOffsetX = (Math.random() - 0.5) * 20;
+    const startOffsetY = (Math.random() - 0.5) * 20;
+    const x1 = centroid[0] + startOffsetX;
+    const y1 = centroid[1] + startOffsetY;
+    const x2 = x1 + Math.cos(angle) * length;
+    const y2 = y1 + Math.sin(angle) * length;
+
+    setTimeout(() => {
+      const laser = gPerspective.append('line')
+        .attr('x1', x1).attr('y1', y1)
+        .attr('x2', x2).attr('y2', y2) // 처음부터 끝점까지 바로 그려짐
+        .attr('stroke', '#00ccff') // 진한 파란색 고정
+        .attr('stroke-width', 0.8 + Math.random() * 0.7) // 기존 2~3.5 → 0.8~1.5로 얇게
+        .attr('stroke-linecap', 'round')
+        .attr('opacity', 1)
+        .attr('filter', 'drop-shadow(0 0 3px #00aaff)') // 글로우 효과
+        .attr('class', 'pointer-events-none');
+
+      // 선이 바로 나타났다가 서서히 사라짐
+      laser.transition()
+        .delay(80 + Math.random() * 80) // 잠깐 유지
+        .duration(400 + Math.random() * 200)
+        .ease(d3.easeQuadIn)
+        .attr('opacity', 0)
+        .remove();
+
+    }, i * (150 + Math.random() * 100)); // 순차적으로
+  }
+};
+
+burst();
+if (hasDefense) laserBurst();
+
+const intervalId = setInterval(() => {
+  burst();
+  if (hasDefense) laserBurst();
+}, 2000);
+    
+    activeWarIntervalsRef.current.set(warEvent.id, intervalId);
+
+    setTimeout(() => {
+      clearInterval(intervalId);
+      activeWarIntervalsRef.current.delete(warEvent.id);
+    }, 30000);
+  });
+}, [warEvents, topology, viewMode]);
 
   useEffect(() => {
     if (!topology || !svgRef.current || !zoomRef.current || viewMode !== '2d') return;
@@ -384,16 +649,16 @@ export default function WorldMap({ countries, players, onCountryClick }: WorldMa
     svg.transition().duration(1000).ease(d3.easeCubicOut).call(zoomRef.current.transform, transform);
   }, [selectedContinent, topology, viewMode]);
 
-useEffect(() => {
-  if (viewMode !== '3d') return;
-  const interval = setInterval(() => {
-    if (!isDraggingRef.current && isRotating) {
-      setRotation(prev => [prev[0] + 0.3, prev[1], prev[2]]);
-    }
-  }, 16);
-  return () => clearInterval(interval);
-}, [viewMode, isRotating]);
-  
+  useEffect(() => {
+    if (viewMode !== '3d') return;
+    const interval = setInterval(() => {
+      if (!isDraggingRef.current && isRotating) {
+        setRotation(prev => [prev[0] + 0.3, prev[1], prev[2]]);
+      }
+    }, 16);
+    return () => clearInterval(interval);
+  }, [viewMode, isRotating]);
+
   return (
     <div
       ref={containerRef}
@@ -407,9 +672,19 @@ useEffect(() => {
         touchAction: 'pan-y',
       }}
     >
+      <style>{`
+        @keyframes warningPulse {
+          0% { stroke-opacity: 0.2; stroke-width: 2px; }
+          100% { stroke-opacity: 1; stroke-width: 5px; }
+        }
+        .warning-border {
+          animation: warningPulse 0.8s ease-in-out infinite alternate;
+        }
+      `}</style>
+
       <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing"
         style={{ willChange: 'transform' }}
-        />
+      />
 
       <div className="absolute top-5 left-5 flex flex-col gap-3" style={{ pointerEvents: 'none' }}>
         <div className="flex p-[3px] rounded-[14px] gap-[2px]"
@@ -494,4 +769,4 @@ useEffect(() => {
       </div>
     </div>
   );
-          }
+}

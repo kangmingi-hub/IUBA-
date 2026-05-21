@@ -13,11 +13,13 @@ interface Props {
   players: Player[];
   countries: Record<string, CountryState>;
   onCancel: (countryId: string) => void;
-  onCancelBuilding: (countryId: string) => void; // ← 추가
+  onCancelBuilding: (countryId: string) => void;
+  onCancelDefense: (countryId: string) => void;  // ← 추가
   onHealGhosts: () => void;
+ defenses: Record<string, { defense_buildings: number; defense_power: number }>;  // ← 추가
 }
 
-  export default function TerritoriesPanel({ players, countries, onCancel, onCancelBuilding, onHealGhosts }: Props) {
+ export default function TerritoriesPanel({ players, countries, onCancel, onCancelBuilding, onCancelDefense, onHealGhosts, defenses }: Props) {
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
   const occupiedCountries = Object.values(countries).filter(c => c.ownerId);
 
@@ -110,6 +112,12 @@ const handleCancelBuilding = (countryId: string) => {
                                   <button onClick={() => handleCancelBuilding(country.id)}
                                     className="flex items-center gap-1.5 px-3 py-1.5 text-amber-500 hover:text-amber-600 hover:bg-amber-50/70 border border-amber-100 rounded-lg text-[11px] font-black transition-all">
                                     🏚️ 건물 -1
+                                  </button>
+                                )}
+                                {(defenses[country.id]?.defense_buildings > 0 || defenses[country.name]?.defense_buildings > 0) && (
+                                  <button onClick={() => onCancelDefense(country.id)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50/70 border border-blue-100 rounded-lg text-[11px] font-black transition-all">
+                                    🛡️ 방어 -1
                                   </button>
                                 )}
                                 <button onClick={() => setCancelConfirmId(country.id)}

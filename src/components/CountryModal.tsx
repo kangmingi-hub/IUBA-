@@ -5,6 +5,8 @@ import { Player, CountryState, User } from '../types';
 import { COUNTRY_PRICES, DEFAULT_COUNTRY_PRICE, CLUB_IMAGES, getBuildingTiers, TEAM_ALIASES } from '../constants';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
@@ -17,10 +19,26 @@ interface Props {
   onClose: () => void;
   onBuy: (countryId: string, playerId: string, countryName: string) => void;
   onBuild: (countryId: string) => void;
+  onBuildDefense: (countryId: string) => void;
+  onRestore: (countryId: string) => void;
 }
 
-export default function CountryModal({ selectedCountry, countries, players, currentUser, onClose, onBuy, onBuild }: Props) {
+export default function CountryModal({ selectedCountry, countries, players, currentUser, onClose, onBuy, onBuild, onBuildDefense, onRestore }: Props) {
   if (!selectedCountry) return null;
+  const [defenseData, setDefenseData] = useState<{ defense_buildings: number; defense_power: number } | null>(null);
+
+  useEffect(() => {
+    if (!selectedCountry) return;
+    const fetch = async () => {
+      const { data } = await supabase
+        .from('country_defenses')
+        .select('defense_buildings, defense_power')
+        .eq('country_id', selectedCountry.id)
+        .single();
+      setDefenseData(data || null);
+    };
+    fetch();
+  }, [selectedCountry?.id]);
 
   const ownedCountry = countries[selectedCountry.id] || countries[selectedCountry.name];
   const isAdmin = currentUser?.role === 'admin';
@@ -33,7 +51,7 @@ const myPlayer = players.find(p => p.name === resolvedName);
   const isMyCountry = !!myPlayer && ownedCountry?.ownerId === myPlayer.id;
 
   // 건설 가능 여부: admin이거나 내 나라일 때
-  const canBuild = isAdmin || isMyCountry;
+  const canBuild = (isAdmin || isMyCountry) && !ownedCountry?.isDestroyed;
 
   return (
     <AnimatePresence>
@@ -90,44 +108,87 @@ const myPlayer = players.find(p => p.name === resolvedName);
 
               {ownedCountry?.ownerId ? (
                 <div className="space-y-6">
-                  <div className="flex items-center justify-center h-28 bg-[#FAFBFF] rounded-2xl border border-[#E2E8F0] shadow-inner mb-4">
-                    <div className="flex items-center gap-4">
-                      <motion.div layout transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="relative z-10">
-                        <img
-                          src={(() => {
-                            const owner = players.find(p => p.id === ownedCountry.ownerId);
-                            return owner
-                              ? (CLUB_IMAGES[owner.name] || owner.characterUrl || "https://cdn-icons-png.flaticon.com/512/149/149071.png")
-                              : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-                          })()}
-                          alt="캐릭터"
-                          className="w-16 h-16 rounded-full border-4 shadow-md bg-white object-cover"
-                          style={{ borderColor: players.find(p => p.id === ownedCountry.ownerId)?.color || '#3B82F6' }}
-                          onError={(e) => { (e.target as HTMLImageElement).src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; }}
-                        />
-                      </motion.div>
+                <div className="flex items-center justify-center h-28 bg-[#FAFBFF] rounded-2xl border border-[#E2E8F0] shadow-inner mb-4">
+                                    <div className="flex items-center justify-center relative w-full h-full">
+                
+                
+                                      {/* 캐릭터 이미지 */}
+                                      <motion.div layout transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} className="relative z-10">
+                                        <img
+                                          src={(() => {
+                                            const owner = players.find(p => p.id === ownedCountry.ownerId);
+                                            return owner
+                                              ? (CLUB_IMAGES[owner.name] || owner.characterUrl || "https://cdn-icons-png.flaticon.com/512/149/149071.png")
+                                              : "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+                                          })()}
+                                          alt="캐릭터"
+                                          className="w-16 h-16 rounded-full border-4 shadow-md bg-white object-cover"
+                                          style={{ borderColor: players.find(p => p.id === ownedCountry.ownerId)?.color || '#3B82F6' }}
+                                          onError={(e) => { (e.target as HTMLImageElement).src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; }}
+                                        />
+                                      </motion.div>
+                
+                                      {/* 센터 건물 아이콘 */}
+                                      <AnimatePresence>
+                                        {ownedCountry.buildings > 0 && (
+                                          <motion.div
+                                            initial={{ opacity: 0, scale: 0, x: -20 }}
+                                            animate={{ opacity: 1, scale: 1, x: 0 }}
+                                            exit={{ opacity: 0, scale: 0, x: -20 }}
+                                            transition={{ type: "spring", bounce: 0.4, duration: 0.6 }}
+                                            className="relative z-20"
+                                          >
+                                            <img
+                                              src="https://cdn-icons-png.flaticon.com/512/2555/2555572.png"
+                                              alt="건물"
+                                              className="w-16 h-16 drop-shadow-xl object-contain"
+                                            />
+                                            <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
+                                              Lv.{ownedCountry.buildings}
+                                            </span>
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
+
+                                      {/* 방어 건물 방패 아이콘 */}
                       <AnimatePresence>
-                        {ownedCountry.buildings > 0 && (
+                        {defenseData && defenseData.defense_buildings > 0 && (
                           <motion.div
-                            initial={{ opacity: 0, scale: 0, x: -20 }}
-                            animate={{ opacity: 1, scale: 1, x: 0 }}
-                            exit={{ opacity: 0, scale: 0, x: -20 }}
+                            initial={{ opacity: 0, scale: 0 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0 }}
                             transition={{ type: "spring", bounce: 0.4, duration: 0.6 }}
-                            className="relative z-20"
+                            className="relative z-30"
                           >
-                            <img
-                              src="https://cdn-icons-png.flaticon.com/512/2555/2555572.png"
-                              alt="건물"
-                              className="w-16 h-16 drop-shadow-xl object-contain"
-                            />
-                            <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
-                              Lv.{ownedCountry.buildings}
+                            <div className="w-14 h-14 flex items-center justify-center text-4xl drop-shadow-xl">
+                              🛡️
+                            </div>
+                            <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
+                              {defenseData.defense_buildings}
                             </span>
                           </motion.div>
                         )}
                       </AnimatePresence>
-                    </div>
-                  </div>
+                
+                                      {/* 방어 건물 수 뱃지 */}
+                                      <AnimatePresence>
+                                        {defenseData && defenseData.defense_buildings > 0 && (
+                                          <motion.div
+                                            initial={{ opacity: 0, scale: 0 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0 }}
+                                            className="absolute top-2 right-4 z-30 flex items-center gap-1 px-2 py-1 rounded-full"
+                                            style={{ background: 'rgba(16,185,129,0.9)' }}
+                                          >
+                                            <span className="text-[10px]">🛡️</span>
+                                            <span className="text-white text-[10px] font-black">{defenseData.defense_buildings}</span>
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
+                
+                                    </div>
+                                  </div>
+                  
 
                   <div className="p-6 bg-[#FAFBFF] rounded-2xl border border-[#E2E8F0] flex items-center justify-between shadow-sm">
                     <div>
@@ -144,6 +205,63 @@ const myPlayer = players.find(p => p.name === resolvedName);
                     </div>
                   </div>
 
+                  {defenseData && (
+                    <div className="p-4 rounded-2xl flex items-center justify-between"
+                      style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)' }}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🛡️</span>
+                        <div>
+                          <p className="text-[10px] text-emerald-400 uppercase font-bold tracking-widest">방어 건물</p>
+                          <p className="text-white font-black">{defenseData.defense_buildings}개</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-emerald-400 uppercase font-bold tracking-widest">방어력</p>
+                        <p className="text-emerald-400 font-black text-xl">{defenseData.defense_power}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+              {canBuild && (
+                    <button
+                      onClick={() => onBuildDefense(selectedCountry.id)}
+                      className="w-full py-4 rounded-2xl font-black text-white flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(16,185,129,0.8), rgba(5,150,105,0.8))',
+                        border: '1px solid rgba(16,185,129,0.5)',
+                        boxShadow: '0 4px 20px rgba(16,185,129,0.3)',
+                      }}
+                    >
+                      🛡️ 방어 건물 건설 (15 GAS)
+                    </button>
+                  )}
+
+{ownedCountry?.isDestroyed && (isAdmin ? (
+  <button
+    onClick={() => onRestore(selectedCountry.id)}
+    className="w-full py-4 rounded-2xl font-black text-white flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+    style={{
+      background: 'linear-gradient(135deg, rgba(239,68,68,0.8), rgba(220,38,38,0.8))',
+      border: '1px solid rgba(239,68,68,0.5)',
+      boxShadow: '0 4px 20px rgba(239,68,68,0.3)',
+    }}
+  >
+    🔧 영토 복구 (30 GAS)
+  </button>
+) : canBuild && (
+  <button
+    onClick={() => onRestore(selectedCountry.id)}
+    className="w-full py-4 rounded-2xl font-black text-white flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+    style={{
+      background: 'linear-gradient(135deg, rgba(239,68,68,0.8), rgba(220,38,38,0.8))',
+      border: '1px solid rgba(239,68,68,0.5)',
+      boxShadow: '0 4px 20px rgba(239,68,68,0.3)',
+    }}
+  >
+    🔧 영토 복구 (30 MINERAL)
+  </button>
+))}
+                  
                   {canBuild ? (
                     <button
                       onClick={() => onBuild(selectedCountry.id)}
@@ -158,7 +276,7 @@ const myPlayer = players.find(p => p.name === resolvedName);
                       <Lock className="w-5 h-5" />
                       <span className="text-[11px] font-black uppercase tracking-widest">본인 동아리 영토만 건설 가능합니다</span>
                     </div>
-                  )}
+                  )}  
                 </div>
               ) : (
                 <div className="space-y-6">
