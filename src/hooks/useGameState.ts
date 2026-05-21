@@ -556,7 +556,7 @@ await supabase.from('building_purchases').insert({
   if (existing) {
     await supabase.from('country_defenses').update({
       defense_buildings: existing.defense_buildings + 1,
-      defense_power: existing.defense_power + 60
+      defense_power: existing.defense_power + 30
     }).eq('country_id', countryId);
   } else {
     await supabase.from('country_defenses').insert({
@@ -625,7 +625,7 @@ const restoreCountry = async (countryId: string, isAdmin?: boolean) => {
   }
 
   const newBuildings = existing.defense_buildings - 1;
-  const newPower = existing.defense_power - 10;
+  const newPower = existing.defense_power - 30;
 
   if (newBuildings <= 0) {
     await supabase.from('country_defenses').delete().eq('country_id', countryId);
