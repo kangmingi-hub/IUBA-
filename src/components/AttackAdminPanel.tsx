@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Swords, Shield, Clock, Zap, Trash2, RotateCcw } from 'lucide-react';
+import { Swords, Shield, Clock, Zap, Trash2, RotateCcw, CheckSquare, Square } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 const DEFENSE_BUILDING_COST = 50;
@@ -20,17 +20,21 @@ interface Props {
   countries: Record<string, { id: string; name: string; ownerId: string; buildings: number }>;
 }
 
-
 export default function AttackAdminPanel({ players, countries }: Props) {
   const [schedules, setSchedules] = useState<AttackSchedule[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [defenses, setDefenses] = useState<{ country_id: string; defense_buildings: number; defense_power: number }[]>([]);
   const [now, setNow] = useState(Date.now());
   const [scheduledTime, setScheduledTime] = useState<string>(() => {
-  const now = new Date();
-  now.setMinutes(now.getMinutes() + 10);
-  return now.toISOString().slice(0, 16); // datetime-local 형식
-});
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 10);
+    return now.toISOString().slice(0, 16);
+  });
+
+  // ✅ 새로 추가: 선택된 나라들
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  // ✅ 새로 추가: 각 나라별 공격력 (key: country.id)
+  const [attackPowers, setAttackPowers] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
@@ -46,11 +50,13 @@ export default function AttackAdminPanel({ players, countries }: Props) {
   };
 
   const fetchDefenses = async () => {
-  const { data } = await supabase.from('country_defenses').select('*');
-  if (data) setDefenses(data);
-};
+    const { data } = await supabase.from('country_defenses').select('*');
+    if (data) setDefenses(data);
+  };
+
   useEffect(() => {
     fetchSchedules();
+    fetchDefenses();
     const channel = supabase
       .channel('attack_admin_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'attack_schedules' }, fetchSchedules)
@@ -58,44 +64,99 @@ export default function AttackAdminPanel({ players, countries }: Props) {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-const triggerAttack = async () => {
-  setIsLoading(true);
-  try {
-    const occupiedList = Object.values(countries).filter(c => c.ownerId);
-    if (occupiedList.length === 0) { alert('점령된 나라가 없습니다!'); return; }
+  // ✅ 점령된 나라만 필터링
+  const occupiedCountries = Object.values(countries).filter(c => c.ownerId);
 
-    const shuffled = [...occupiedList].sort(() => Math.random() - 0.5);
-    const targets = shuffled.slice(0, Math.min(5, shuffled.length));
+  // ✅ 나라 선택/해제 토글
+  const toggleCountry = (countryId: string) => {
+    setSelectedCountries(prev => {
+      if (prev.includes(countryId)) {
+        return prev.filter(id => id !== countryId);
+      } else {
+        // 새로 선택할 때 공격력 기본값 랜덤 설정
+        setAttackPowers(p => ({
+          ...p,
+          [countryId]: Math.floor(Math.random() * 61) + 20
+        }));
+        return [...prev, countryId];
+      }
+    });
+  };
 
-   const attackTime = new Date(scheduledTime).toISOString();
-    
-    const inserts = targets.map(country => ({
-      attack_time: attackTime,
-      attack_power: Math.floor(Math.random() * 61) + 20,
-      target_country_id: country.id,
-      target_country_name: country.name,
-      target_owner_id: country.ownerId,
-      status: 'scheduled'
-    }));
+  // ✅ 선택된 나라들로 공격 예약
+  const triggerAttack = async () => {
+    if (selectedCountries.length === 0) {
+      alert('공격할 나라를 선택해주세요!');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const attackTime = new Date(scheduledTime).toISOString();
 
-    await supabase.from('attack_schedules').insert(inserts);
+      const inserts = selectedCountries.map(countryId => {
+        const country = countries[countryId] || occupiedCountries.find(c => c.id === countryId);
+        return {
+          attack_time: attackTime,
+          attack_power: attackPowers[countryId] ?? Math.floor(Math.random() * 61) + 20,
+          target_country_id: country?.id ?? countryId,
+          target_country_name: country?.name ?? '',
+          target_owner_id: country?.ownerId ?? '',
+          status: 'scheduled'
+        };
+      });
 
-    const summary = targets.map((c, i) => `${c.name} (공격력: ${inserts[i].attack_power})`).join('\n');
-    alert(`⚔️ 공격 예약 완료! ${new Date(scheduledTime).toLocaleString('ko-KR')}\n\n${summary}`);
-    fetchSchedules();
-  } catch (err) {
-    alert('오류: ' + err);
-  } finally {
-    setIsLoading(false);
-  }
-};
+      await supabase.from('attack_schedules').insert(inserts);
+
+      const summary = inserts.map(i => `${i.target_country_name} (공격력: ${i.attack_power})`).join('\n');
+      alert(`⚔️ 공격 예약 완료! ${new Date(scheduledTime).toLocaleString('ko-KR')}\n\n${summary}`);
+
+      setSelectedCountries([]);
+      setAttackPowers({});
+      fetchSchedules();
+    } catch (err) {
+      alert('오류: ' + err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ✅ 즉시 공격 (선택된 나라로)
+  const triggerImmediateAttack = async () => {
+    if (selectedCountries.length === 0) {
+      alert('공격할 나라를 선택해주세요!');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const inserts = selectedCountries.map(countryId => {
+        const country = countries[countryId] || occupiedCountries.find(c => c.id === countryId);
+        return {
+          attack_time: new Date(Date.now() - 1000).toISOString(),
+          attack_power: attackPowers[countryId] ?? Math.floor(Math.random() * 61) + 20,
+          target_country_id: country?.id ?? countryId,
+          target_country_name: country?.name ?? '',
+          target_owner_id: country?.ownerId ?? '',
+          status: 'scheduled'
+        };
+      });
+
+      await supabase.from('attack_schedules').insert(inserts);
+
+      const summary = inserts.map(i => `${i.target_country_name} (공격력: ${i.attack_power})`).join('\n');
+      alert(`⚔️ 즉시 공격 발동!\n\n${summary}`);
+
+      setSelectedCountries([]);
+      setAttackPowers({});
+    } catch (err) {
+      alert('오류: ' + err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const cancelSchedule = async (id: string) => {
     if (!window.confirm('이 공격 일정을 취소하시겠습니까?')) return;
-    await supabase
-      .from('attack_schedules')
-      .update({ status: 'cancelled' })
-      .eq('id', id);
+    await supabase.from('attack_schedules').update({ status: 'cancelled' }).eq('id', id);
     fetchSchedules();
   };
 
@@ -108,88 +169,22 @@ const triggerAttack = async () => {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-const triggerImmediateAttack = async () => {
-  setIsLoading(true);
-  try {
-    const occupiedList = Object.values(countries);
-    if (occupiedList.length === 0) { alert('점령된 나라가 없습니다!'); return; }
-
-    // 랜덤으로 최대 5개 선택
-    const shuffled = [...occupiedList].sort(() => Math.random() - 0.5);
-    const targets = shuffled.slice(0, Math.min(5, shuffled.length));
-
-    const inserts = targets.map(country => ({
-      attack_time: new Date(Date.now() - 1000).toISOString(),
-      attack_power: Math.floor(Math.random() * 61) + 20,
-      target_country_id: country.id,
-      target_country_name: country.name,
-      target_owner_id: country.ownerId,
-      status: 'scheduled'
-    }));
-
-    await supabase.from('attack_schedules').insert(inserts);
-
-    const summary = targets.map((c, i) => `${c.name} (공격력: ${inserts[i].attack_power})`).join('\n');
-    alert(`⚔️ 즉시 공격 발동! ${targets.length}개 나라\n\n${summary}`);
-  } catch (err) {
-    alert('오류: ' + err);
-  } finally {
-    setIsLoading(false);
-  }
-};
-
   const resetDefenseData = async () => {
-  if (!window.confirm('디펜스 데이터를 모두 초기화하시겠습니까?\n(공격 일정, 공격 결과, 방어력 전부 삭제)')) return;
-  await supabase.from('attack_schedules').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-  await supabase.from('attack_results').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-  await supabase.from('country_defenses').delete().neq('country_id', '');
-  alert('디펜스 데이터가 초기화되었습니다!');
-  fetchSchedules();
-  fetchDefenses();
-};
-
-  const buyDefenseBuilding = async (countryId: string, ownerId: string, countryName: string) => {
-  const player = players.find(p => p.id === ownerId);
-  if (!player || player.gold < DEFENSE_BUILDING_COST) {
-    alert('미네랄이 부족합니다!');
-    return;
-  }
-
-  const existing = defenses.find(d => d.country_id === countryId);
-
-  if (existing) {
-    await supabase.from('country_defenses').update({
-      defense_buildings: existing.defense_buildings + 1,
-      defense_power: existing.defense_power + DEFENSE_POWER_PER_BUILDING
-    }).eq('country_id', countryId);
-  } else {
-    await supabase.from('country_defenses').insert({
-      country_id: countryId,
-      country_name: countryName,
-      owner_id: ownerId,
-      defense_power: DEFENSE_POWER_PER_BUILDING,
-      defense_buildings: 1
-    });
-  }
-
-  // 미네랄 차감
-  await supabase.from('country_purchases').insert({
-    country_id: countryId,
-    club_name: player.name,
-    price_paid: DEFENSE_BUILDING_COST
-  });
-
-  alert(`🛡️ ${countryName}에 방어 건물 건축 완료! (미네랄 -${DEFENSE_BUILDING_COST})`);
-};
-
-  
+    if (!window.confirm('디펜스 데이터를 모두 초기화하시겠습니까?\n(공격 일정, 공격 결과, 방어력 전부 삭제)')) return;
+    await supabase.from('attack_schedules').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('attack_results').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('country_defenses').delete().neq('country_id', '');
+    alert('디펜스 데이터가 초기화되었습니다!');
+    fetchSchedules();
+    fetchDefenses();
+  };
 
   const getOwnerName = (ownerId: string) => players.find(p => p.id === ownerId)?.name || '알 수 없음';
   const getOwnerColor = (ownerId: string) => players.find(p => p.id === ownerId)?.color || '#666';
 
   const activeSchedules = schedules.filter(s => s.status === 'scheduled');
   const completedSchedules = schedules.filter(s => s.status === 'completed').slice(0, 5);
-  
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -209,97 +204,160 @@ const triggerImmediateAttack = async () => {
       </div>
 
       <div className="p-6 space-y-6">
-        {/* 공격 발동 버튼 */}
+
+        {/* ✅ 나라 선택 섹션 */}
         <div>
           <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3">
-            새 공격 예약
+            공격할 나라 선택 ({selectedCountries.length}개 선택됨)
           </p>
 
-          <div className="flex flex-col gap-2 mb-3">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              공격 시간 지정
-            </p>
-            <input
-              type="datetime-local"
-              value={scheduledTime}
-              onChange={(e) => setScheduledTime(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl font-bold text-sm"
-              style={{
-                background: 'rgba(255,255,255,0.08)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                color: 'white',
-                colorScheme: 'dark',
-              }}
-            />
-          </div>
-          
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={triggerAttack}
-            disabled={isLoading}
-            className="w-full py-4 rounded-xl font-black text-white flex items-center justify-center gap-3 transition-all disabled:opacity-50"
-            style={{
-              background: isLoading
-                ? 'rgba(239,68,68,0.3)'
-                : 'linear-gradient(135deg, rgba(239,68,68,0.8), rgba(185,28,28,0.8))',
-              border: '1px solid rgba(239,68,68,0.5)',
-              boxShadow: '0 4px 20px rgba(239,68,68,0.3)',
-            }}
-          >
-            {isLoading ? (
-              <>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                  className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
-                />
-                공격 예약 중...
-              </>
-            ) : (
-              <>
-                <Zap className="w-5 h-5" />
-                랜덤 공격 예약 ({new Date(scheduledTime).toLocaleString('ko-KR')})
-              </>
-            )}
-          </motion.button>
+          {occupiedCountries.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-4">점령된 나라가 없습니다</p>
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {occupiedCountries.map(country => {
+                const isSelected = selectedCountries.includes(country.id);
+                const ownerColor = getOwnerColor(country.ownerId);
+                const ownerName = getOwnerName(country.ownerId);
 
-          {/* 즉시 공격 버튼 */}
-<motion.button
-  whileHover={{ scale: 1.02 }}
-  whileTap={{ scale: 0.98 }}
-  onClick={triggerImmediateAttack}
-  disabled={isLoading}
-  className="w-full py-4 rounded-xl font-black text-white flex items-center justify-center gap-3 transition-all disabled:opacity-50"
-  style={{
-    background: 'linear-gradient(135deg, rgba(168,85,247,0.8), rgba(109,40,217,0.8))',
-    border: '1px solid rgba(168,85,247,0.5)',
-    boxShadow: '0 4px 20px rgba(168,85,247,0.3)',
-  }}
->
-  <Zap className="w-5 h-5" />
-  즉시 공격 발동 (테스트용)
-</motion.button>
+                return (
+                  <div key={country.id}>
+                    <div
+                      onClick={() => toggleCountry(country.id)}
+                      className="rounded-xl px-4 py-3 flex items-center gap-3 cursor-pointer transition-all"
+                      style={{
+                        background: isSelected
+                          ? 'rgba(239,68,68,0.15)'
+                          : 'rgba(255,255,255,0.04)',
+                        border: isSelected
+                          ? '1px solid rgba(239,68,68,0.5)'
+                          : '1px solid rgba(255,255,255,0.08)',
+                      }}
+                    >
+                      {/* 체크박스 아이콘 */}
+                      {isSelected
+                        ? <CheckSquare className="w-5 h-5 text-red-400 flex-shrink-0" />
+                        : <Square className="w-5 h-5 text-slate-500 flex-shrink-0" />
+                      }
 
-{/* 초기화 버튼 */}
-<motion.button
-  whileHover={{ scale: 1.02 }}
-  whileTap={{ scale: 0.98 }}
-  onClick={resetDefenseData}
-  className="w-full py-3 rounded-xl font-bold text-red-400 flex items-center justify-center gap-3 transition-all"
-  style={{
-    background: 'rgba(239,68,68,0.1)',
-    border: '1px solid rgba(239,68,68,0.3)',
-  }}
->
-  <RotateCcw className="w-4 h-4" />
-  디펜스 데이터 초기화
-</motion.button>
-          
-          <p className="mt-2 text-[10px] text-slate-500 text-center">
-            점령된 나라 중 랜덤으로 선택 · 공격력 20~80 랜덤
-          </p>
+                      {/* 나라 정보 */}
+                      <div className="flex-1">
+                        <p className="text-white font-bold text-sm">{country.name}</p>
+                        <p className="text-[10px] font-bold" style={{ color: ownerColor }}>
+                          {ownerName} 점령중
+                        </p>
+                      </div>
+
+                      {/* 건물 수 */}
+                      <span className="text-[10px] text-slate-500 font-bold">
+                        🏛️ {country.buildings ?? 0}
+                      </span>
+                    </div>
+
+                    {/* ✅ 선택된 경우 공격력 입력 */}
+                    {isSelected && (
+                      <div className="mt-1 ml-8 flex items-center gap-2">
+                        <span className="text-[10px] text-slate-400 font-bold">공격력:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={999}
+                          value={attackPowers[country.id] ?? 50}
+                          onChange={e => setAttackPowers(p => ({
+                            ...p,
+                            [country.id]: Number(e.target.value)
+                          }))}
+                          onClick={e => e.stopPropagation()}
+                          className="w-20 px-2 py-1 rounded-lg text-sm font-bold text-center"
+                          style={{
+                            background: 'rgba(255,255,255,0.08)',
+                            border: '1px solid rgba(239,68,68,0.4)',
+                            color: 'white',
+                          }}
+                        />
+                        <span className="text-[10px] text-slate-500">직접 입력 가능</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
+
+        {/* 공격 시간 지정 */}
+        <div className="flex flex-col gap-2">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            공격 시간 지정
+          </p>
+          <input
+            type="datetime-local"
+            value={scheduledTime}
+            onChange={(e) => setScheduledTime(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl font-bold text-sm"
+            style={{
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: 'white',
+              colorScheme: 'dark',
+            }}
+          />
+        </div>
+
+        {/* 예약 공격 버튼 */}
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={triggerAttack}
+          disabled={isLoading || selectedCountries.length === 0}
+          className="w-full py-4 rounded-xl font-black text-white flex items-center justify-center gap-3 transition-all disabled:opacity-40"
+          style={{
+            background: 'linear-gradient(135deg, rgba(239,68,68,0.8), rgba(185,28,28,0.8))',
+            border: '1px solid rgba(239,68,68,0.5)',
+            boxShadow: '0 4px 20px rgba(239,68,68,0.3)',
+          }}
+        >
+          <Zap className="w-5 h-5" />
+          {selectedCountries.length === 0
+            ? '나라를 선택해주세요'
+            : `${selectedCountries.length}개 나라 공격 예약`
+          }
+        </motion.button>
+
+        {/* 즉시 공격 버튼 */}
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={triggerImmediateAttack}
+          disabled={isLoading || selectedCountries.length === 0}
+          className="w-full py-4 rounded-xl font-black text-white flex items-center justify-center gap-3 transition-all disabled:opacity-40"
+          style={{
+            background: 'linear-gradient(135deg, rgba(168,85,247,0.8), rgba(109,40,217,0.8))',
+            border: '1px solid rgba(168,85,247,0.5)',
+            boxShadow: '0 4px 20px rgba(168,85,247,0.3)',
+          }}
+        >
+          <Zap className="w-5 h-5" />
+          {selectedCountries.length === 0
+            ? '나라를 선택해주세요'
+            : `${selectedCountries.length}개 나라 즉시 공격`
+          }
+        </motion.button>
+
+        {/* 초기화 버튼 */}
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={resetDefenseData}
+          className="w-full py-3 rounded-xl font-bold text-red-400 flex items-center justify-center gap-3 transition-all"
+          style={{
+            background: 'rgba(239,68,68,0.1)',
+            border: '1px solid rgba(239,68,68,0.3)',
+          }}
+        >
+          <RotateCcw className="w-4 h-4" />
+          디펜스 데이터 초기화
+        </motion.button>
 
         {/* 예정된 공격 목록 */}
         {activeSchedules.length > 0 && (
