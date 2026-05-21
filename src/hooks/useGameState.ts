@@ -464,12 +464,12 @@ useEffect(() => {
     });
 
     // ✅ 추가: country_purchases에 기록 → 다른 기기 포인트 차감 동기화
-    await supabase.from('country_purchases').insert({
-      club_name: player.name,
-      country_name: countryName,
-      price_paid: price,
-      purchased_at: new Date().toISOString()
-    });
+await supabase.from('country_purchases').insert({
+  club_name: player.name,
+  country_name: countryName,
+  price_paid: price,
+  purchased_at: new Date().toISOString()
+});
 
     setGameState(prev => ({
       ...prev,
@@ -495,12 +495,13 @@ useEffect(() => {
       .eq('country_id', countryId);
 
     // ✅ 추가: building_purchases에 기록 → 다른 기기 포인트 차감 동기화
-    await supabase.from('building_purchases').insert({
-      club_name: player.name,
-      building_name: nextTier.name,
-      price_paid: nextTier.cost,
-      purchased_at: new Date().toISOString()
-    });
+await supabase.from('building_purchases').insert({
+  club_name: player.name,
+  building_name: nextTier.name,
+  price_paid: nextTier.cost,
+  country_name: country.name,
+  purchased_at: new Date().toISOString()
+});
 
     setGameState(prev => ({
       ...prev,
